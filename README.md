@@ -3,7 +3,7 @@
 Welcome to **movie-site-api**! This is a charming little API built with the [Gin](https://gin-gonic.com/) framework in Go, serving up a delightful collection of movies from a MongoDB cluster.
 
 
-<img src="https://avatars.githubusercontent.com/u/7894478?v=4" alt="Gin_Logo" width=100/><img alt="Toy Story" src="https://stickershop.line-scdn.net/sticonshop/v1/product/5b337485031a671b9c23d56d/iPhone/main.png" width="100" /><img src="https://miro.medium.com/v2/resize:fit:1000/0*YISbBYJg5hkJGcQd.png" alt="Go Gopher" width=100/>
+<img src="https://avatars.githubusercontent.com/u/7894478?v=4" alt="Gin_Logo" width=100/><img alt="Toy Story" src="https://stickershop.line-scdn.net/sticonshop/v1/product/5b337485031a671b9c23d56d/iPhone/main.png" width="100" /><img src="https://miro.medium.com/v2/resize:fit:1000/0*YISbBYJg5hkJGcQd.png" alt="Go Gopher" width=100/><img src="https://stickershop.line-scdn.net/sticonshop/v1/product/5c7629e6031a6757b98a21a8/iPhone/main.png?v=3" alt="Pooh Bear" width="100"/><img src="https://stickershop.line-scdn.net/sticonshop/v1/product/5dedd7af031a67c29d105026/iPhone/main.png?v=2" alt="Star Wars" width="100"/>
 
 ## 🎬 About
 
