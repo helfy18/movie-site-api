@@ -46,9 +46,7 @@ This project is a RESTful API that connects to a MongoDB database to fetch and s
 
 To start the API server, simply run:
 
-    ```sh
     go run main.go
-    ```
 
 The server will start, and you'll be able to access the API at http://localhost:8080.
 
