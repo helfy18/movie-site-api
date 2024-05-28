@@ -27,13 +27,15 @@ This project is a RESTful API that connects to a MongoDB database to fetch and s
 
 1. **Clone the repository:**
 
+   ```sh
     git clone https://github.com/helfy18/movie-site-api.git
-   
     cd movie-site-api
+   ```
 
 3. **Install dependencies:**
-
+    ```sh
     go mod tidy
+    ```
 
 4. **Set up your MongoDB connection:**
 
@@ -44,7 +46,9 @@ This project is a RESTful API that connects to a MongoDB database to fetch and s
 
 To start the API server, simply run:
 
+    ```sh
     go run main.go
+    ```
 
 The server will start, and you'll be able to access the API at http://localhost:8080.
 
