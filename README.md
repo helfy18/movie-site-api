@@ -2,7 +2,8 @@
 
 Welcome to **movie-site-api**! This is a charming little API built with the [Gin](https://gin-gonic.com/) framework in Go, serving up a delightful collection of movies from a MongoDB cluster.
 
-![Gin Logo](https://gin-gonic.com/images/logo.jpg)
+
+<img src="https://avatars.githubusercontent.com/u/7894478?v=4" alt="Gin_Logo" width=100/><img alt="Toy Story" src="https://stickershop.line-scdn.net/sticonshop/v1/product/5b337485031a671b9c23d56d/iPhone/main.png" width="100" /><img src="https://miro.medium.com/v2/resize:fit:1000/0*YISbBYJg5hkJGcQd.png" alt="Go Gopher" width=100/>
 
 ## 🎬 About
 
@@ -27,13 +28,14 @@ This project is a RESTful API that connects to a MongoDB database to fetch and s
 1. **Clone the repository:**
 
     git clone https://github.com/helfy18/movie-site-api.git
+   
     cd movie-site-api
 
-2. **Install dependencies:**
+3. **Install dependencies:**
 
     go mod tidy
 
-3. **Set up your MongoDB connection:**
+4. **Set up your MongoDB connection:**
 
     Ensure you have a MongoDB instance running and update your connection string in the application configuration.
    Contact me if you can be trusted with mine.
