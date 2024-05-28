@@ -12,7 +12,8 @@ import (
 // album represents data about a record album.
 type movie struct {
 	Movie  string  `json:"movie"`
-	Score  int32  `json:"score"`
+	JH_Score  int32  `json:"jh_score"`
+	JV_Score int32 `json:"jv_score"`
 	Universe string  `json:"universe"`
 	Sub_Universe  string `json:"sub_universe"`
     Genre string `json:"genre"`
@@ -29,7 +30,7 @@ type movie struct {
     Ratings string `json:"ratings"` // could be json?
     BoxOffice string `json:"boxoffice"`
     Rated string `json:"rated"`
-    Runtime string `json:"runtime"`
+    Runtime int32 `json:"runtime"`
     Provider string `json:"provider"` //could be json?
     Budget string `json:"budget"`
     TMDBId int32 `json:"tmdbid"`
