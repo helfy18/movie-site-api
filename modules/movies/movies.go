@@ -9,6 +9,25 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+type providerInfo struct {
+	Logo_path string `json:"logo_path"`
+	Provider_id int32 `json:"provider_id"`
+	Provider_name string `json:"provider_name"`
+	Display_priority int32 `json:"display_priority"`
+}
+
+type providers struct {
+	Link string `json:"link"`
+	Rent []providerInfo `json:"rent"`
+	Flatrate []providerInfo `json:"flatrate"`
+	Buy []providerInfo `json:"buy"`
+}
+
+type rating struct {
+	Source string `json:"source"`
+	Value string `json:"value"`
+}
+
 // album represents data about a record album.
 type movie struct {
 	Movie  string  `json:"movie"`
@@ -27,14 +46,14 @@ type movie struct {
     Poster string `json:"poster"`
     Actors string `json:"actors"`
     Director string `json:"director"`
-    Ratings string `json:"ratings"` // could be json?
+    Ratings []rating `json:"ratings"`
     BoxOffice string `json:"boxoffice"`
     Rated string `json:"rated"`
     Runtime int32 `json:"runtime"`
-    Provider string `json:"provider"` //could be json?
+    Provider providers `json:"provider"` //could be json?
     Budget string `json:"budget"`
     TMDBId int32 `json:"tmdbid"`
-    Recommendations string `json:"recommendations"` // could be json?
+    Recommendations []int32 `json:"recommendations"`
 }
 
 // GetAlbums responds with the list of all albums as JSON.
@@ -51,7 +70,7 @@ func GetMovies(c *gin.Context) {
 
 	var movies []movie
 	if err := cursor.All(context.TODO(), &movies); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode movies" + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode movies " + err.Error()})
 		return
 	}
 	c.IndentedJSON(http.StatusOK, movies)
