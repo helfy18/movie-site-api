@@ -42,7 +42,7 @@ func GetMovies(c *gin.Context) {
 	client := c.MustGet("mongoClient").(*mongo.Client)
 
 	collection := client.Database("jdmovies").Collection("movies")
-	cursor, err := collection.Find(context.TODO(), bson.D{{Key: "Movie", Value: "Your Place or Mine"}})
+	cursor, err := collection.Find(context.TODO(), bson.D{})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch movies"})
 		return
