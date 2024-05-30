@@ -60,7 +60,7 @@ func main() {
 	})
 
 	// Define routes
-	router.GET("/movies", movies.GetMovies)
+	router.GET("/movies/list", movies.ListMovies)
 
 	// Run the Gin server
 	router.Run() // Default port is 8080
