@@ -1,5 +1,6 @@
 package movies
 
+// Different websites that provide movies to watch
 type providerInfo struct {
 	Logo_path        string `json:"logo_path"`
 	Provider_id      int32  `json:"provider_id"`
@@ -7,6 +8,9 @@ type providerInfo struct {
 	Display_priority int32  `json:"display_priority"`
 }
 
+/* The format that the providers is stored in the database.
+	Contains lists of providers based on the availability of
+	the movie (to rent, buy or stream) */
 type providers struct {
 	Link     string         `json:"link"`
 	Rent     []providerInfo `json:"rent"`
@@ -14,11 +18,14 @@ type providers struct {
 	Buy      []providerInfo `json:"buy"`
 }
 
+// Ratings from other sites
 type rating struct {
 	Source string `json:"source"`
 	Value  string `json:"value"`
 }
 
+/* Information about a movie as stored in the database. Some fields
+	will be empty. */
 type movie struct {
 	Movie           string    `json:"movie"`
 	JH_Score        int32     `json:"jh_score"`
