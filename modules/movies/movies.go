@@ -112,3 +112,45 @@ func ListMovies(c *gin.Context) {
 	}
 	c.IndentedJSON(http.StatusOK, movies)
 }
+
+/*
+	Accepts tmdbid(int) or (title(string) & year(int)).
+    Returns information about one movie.
+*/
+func GetMovie(c *gin.Context) {
+    query := bson.M{}
+    tmdbid := c.Query("tmdbid")
+    if tmdbid != "" {
+        TMDBId, err := strconv.Atoi(tmdbid)
+        if err != nil {
+            c.JSON(http.StatusBadRequest, gin.H{"error": "year must be an integer"})
+        }
+        query["TMDBId"] = TMDBId
+    } else {
+        title := c.Query("title")
+        year := c.Query("year")
+        if (title == "" || year == "") {
+            c.JSON(http.StatusBadRequest, gin.H{"error" : "Include tmdbid or title and year"})
+            return
+        }
+        Year, err := strconv.Atoi(year)
+        if err != nil {
+            c.JSON(http.StatusBadRequest, gin.H{"error": "year must be an integer"})
+        }
+        query["Movie"] = title
+        query["Year"] = Year
+    }
+
+	client := c.MustGet("mongoClient").(*mongo.Client)
+
+	collection := client.Database("jdmovies").Collection("movies")
+
+	var movie movie
+	err := collection.FindOne(context.TODO(), query).Decode(&movie)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch movies"})
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, movie)
+}
