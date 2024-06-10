@@ -6,7 +6,9 @@ import (
 	"log"
 	"os"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/helfy18/movie-site-api/modules/auth"
 	"github.com/helfy18/movie-site-api/modules/movies"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
@@ -58,10 +60,15 @@ func main() {
 		c.Set("mongoClient", client)
 		c.Next()
 	})
+	
+	config := cors.DefaultConfig()
+	config.AllowOrigins = []string{os.Getenv("SITEURL")}
+	router.Use(cors.New(config))
 
 	// Define routes
 	router.GET("/movies/list", movies.ListMovies)
 	router.GET("/movies/get", movies.GetMovie)
+	router.GET("/login", auth.Login)
 
 	// Run the Gin server
 	router.Run() // Default port is 8080
