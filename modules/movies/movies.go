@@ -2,7 +2,9 @@ package movies
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -85,7 +87,19 @@ func ListMovies(c *gin.Context) {
 
     runtime := c.QueryArray("runtime")
     if len(runtime) > 0 {
-        conditions = append(conditions, bson.M{"Runtime": bson.M{"$in": runtime}})
+        if len(runtime) != 2 {
+            c.JSON(http.StatusBadRequest, gin.H{"error": 
+                "runtime must have two values for range, start and stop"})
+            return
+        }
+        runtimes, err := convertStringsToInts(runtime)
+        if err != nil {
+            c.JSON(http.StatusBadRequest, gin.H{"error": 
+                "runtime must have two values for range, start and stop"})
+            return
+        }
+        sort.Ints(runtimes)
+        conditions = append(conditions, bson.M{"Runtime": bson.M{"$gt": runtimes[0], "$lt": runtimes[1]}})
     }
 
     // Combine all conditions with $and
@@ -95,7 +109,8 @@ func ListMovies(c *gin.Context) {
     } else {
         query = bson.M{}
     }
-
+    
+    fmt.Println(query)
 	client := c.MustGet("mongoClient").(*mongo.Client)
 
 	collection := client.Database("jdmovies").Collection("movies")
