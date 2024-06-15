@@ -47,7 +47,7 @@ type movie struct {
 	BoxOffice       string    `json:"boxoffice"`
 	Rated           string    `json:"rated"`
 	Runtime         int32     `json:"runtime"`
-	Provider        providers `json:"provider"` //could be json?
+	Provider        providers `json:"provider"`
 	Budget          string    `json:"budget"`
 	TMDBId          int32     `json:"tmdbid"`
 	Recommendations []int32   `json:"recommendations"`

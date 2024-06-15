@@ -157,7 +157,6 @@ func GetMovie(c *gin.Context) {
     }
 
 	client := c.MustGet("mongoClient").(*mongo.Client)
-
 	collection := client.Database("jdmovies").Collection("movies")
 
 	var movie movie
@@ -168,4 +167,126 @@ func GetMovie(c *gin.Context) {
 	}
 
 	c.IndentedJSON(http.StatusOK, movie)
+}
+
+func ListTypes(c *gin.Context) {
+	client := c.MustGet("mongoClient").(*mongo.Client)
+	collection := client.Database("jdmovies").Collection("movies")
+
+	// Aggregation pipeline for universes and sub-universes
+	pipeline := bson.A{
+		bson.M{"$group": bson.M{
+			"_id": bson.M{"Universe": "$Universe", "Sub_Universe": bson.M{"$ifNull": []interface{}{"$Sub_Universe", "__NO_SUB_UNIVERSE__"}}},
+			"subUniverseCount": bson.M{"$sum": 1},
+		}},
+		bson.M{"$group": bson.M{
+			"_id": "$_id.Universe",
+			"totalCount": bson.M{"$sum": "$subUniverseCount"},
+			"subUniverses": bson.M{"$push": bson.M{
+				"fieldValue": "$_id.Sub_Universe",
+				"totalCount": "$subUniverseCount",
+			}},
+		}},
+		bson.M{"$project": bson.M{
+			"fieldValue": "$_id",
+			"totalCount": "$totalCount",
+			"group": bson.M{
+				"$filter": bson.M{
+					"input": "$subUniverses",
+					"as": "subUniverse",
+					"cond": bson.M{"$ne": []interface{}{"$$subUniverse.fieldValue", "__NO_SUB_UNIVERSE__"}},
+				},
+			},
+			"noSubUniverseCount": bson.M{
+				"$sum": bson.M{
+					"$map": bson.M{
+						"input": "$subUniverses",
+						"as": "subUniverse",
+						"in": bson.M{"$cond": []interface{}{
+							bson.M{"$eq": []interface{}{"$$subUniverse.fieldValue", "__NO_SUB_UNIVERSE__"}},
+							"$$subUniverse.totalCount",
+							0,
+						}},
+					},
+				},
+			},
+		}},
+		bson.M{"$addFields": bson.M{
+			"totalCount": bson.M{"$add": []interface{}{"$totalCount", "$noSubUniverseCount"}},
+		}},
+	}
+    
+	cursor, err := collection.Aggregate(context.TODO(), pipeline)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch universe data"})
+		return
+	}
+	defer cursor.Close(context.TODO())
+
+	var universes []bson.M
+	if err := cursor.All(context.TODO(), &universes); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse universe data"})
+		return
+	}
+
+    genres, err := collection.Distinct(context.TODO(), "Genre", bson.M{})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct values"})
+		return
+	}
+
+    genre_2s, err := collection.Distinct(context.TODO(), "Genre_2", bson.M{})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct values"})
+		return
+	}
+
+    uniqueMap := make(map[interface{}]bool)
+    for _, g := range append(genres, genre_2s...) { 
+        uniqueMap[g] = true 
+    }
+    var uniqueGenres []interface{}
+    for g := range uniqueMap { 
+        uniqueGenres = append(uniqueGenres, g) 
+    }
+
+    years, err := collection.Distinct(context.TODO(), "Year", bson.M{})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct values"})
+		return
+	}
+
+    exclusives, err := collection.Distinct(context.TODO(), "Exclusive", bson.M{})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct values"})
+		return
+	}
+
+    holidays, err := collection.Distinct(context.TODO(), "Holiday", bson.M{})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct values"})
+		return
+	}
+
+    studios, err := collection.Distinct(context.TODO(), "Studio", bson.M{})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct values"})
+		return
+	}
+
+    directors, err := collection.Distinct(context.TODO(), "Director", bson.M{})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct values"})
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, bson.M{
+		"genre":     uniqueGenres,
+		"year":      years,
+		"exclusive": exclusives,
+		"holiday":   holidays,
+		"studio":    studios,
+		"director":  directors,
+		"universes": universes,
+	})
 }
