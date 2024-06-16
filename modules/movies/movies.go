@@ -211,11 +211,8 @@ func ListTypes(c *gin.Context) {
 				},
 			},
 		}},
-		bson.M{"$addFields": bson.M{
-			"totalCount": bson.M{"$add": []interface{}{"$totalCount", "$noSubUniverseCount"}},
-		}},
 	}
-    
+
 	cursor, err := collection.Aggregate(context.TODO(), pipeline)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch universe data"})
