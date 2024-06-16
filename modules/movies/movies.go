@@ -228,13 +228,13 @@ func ListTypes(c *gin.Context) {
 
     genres, err := collection.Distinct(context.TODO(), "Genre", bson.M{})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct values"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct genres"})
 		return
 	}
 
     genre_2s, err := collection.Distinct(context.TODO(), "Genre_2", bson.M{})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct values"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct genres"})
 		return
 	}
 
@@ -249,31 +249,31 @@ func ListTypes(c *gin.Context) {
 
     years, err := collection.Distinct(context.TODO(), "Year", bson.M{})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct values"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct years"})
 		return
 	}
 
     exclusives, err := collection.Distinct(context.TODO(), "Exclusive", bson.M{})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct values"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct exclusives"})
 		return
 	}
 
     holidays, err := collection.Distinct(context.TODO(), "Holiday", bson.M{})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct values"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct holidays"})
 		return
 	}
 
     studios, err := collection.Distinct(context.TODO(), "Studio", bson.M{})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct values"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct studios"})
 		return
 	}
 
     directors, err := collection.Distinct(context.TODO(), "Director", bson.M{})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct values"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct directors"})
 		return
 	}
 
