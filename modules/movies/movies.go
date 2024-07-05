@@ -173,8 +173,8 @@ func ListTypes(c *gin.Context) {
 	client := c.MustGet("mongoClient").(*mongo.Client)
 	collection := client.Database("jdmovies").Collection("movies")
 
-	// Aggregation pipeline for universes and sub-universes
-	pipeline := bson.A{
+	// Aggregation universePipeline for universes and sub-universes
+	universePipeline := bson.A{
 		bson.M{"$group": bson.M{
 			"_id": bson.M{"Universe": "$Universe", "Sub_Universe": bson.M{"$ifNull": []interface{}{"$Sub_Universe", "__NO_SUB_UNIVERSE__"}}},
 			"subUniverseCount": bson.M{"$sum": 1},
@@ -190,7 +190,7 @@ func ListTypes(c *gin.Context) {
 		bson.M{"$project": bson.M{
 			"fieldValue": "$_id",
 			"totalCount": "$totalCount",
-			"group": bson.M{
+			"subUniverses": bson.M{
 				"$filter": bson.M{
 					"input": "$subUniverses",
 					"as": "subUniverse",
@@ -213,7 +213,7 @@ func ListTypes(c *gin.Context) {
 		}},
 	}
 
-	cursor, err := collection.Aggregate(context.TODO(), pipeline)
+	cursor, err := collection.Aggregate(context.TODO(), universePipeline)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch universe data"})
 		return
@@ -226,26 +226,58 @@ func ListTypes(c *gin.Context) {
 		return
 	}
 
-    genres, err := collection.Distinct(context.TODO(), "Genre", bson.M{})
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct genres"})
-		return
+	genrePipeline := bson.A{
+		bson.M{"$project": bson.M{
+			"Genre":   "$Genre",
+			"Genre_2": "$Genre_2",
+		}},
+		bson.M{"$facet": bson.M{
+			"genre1": bson.A{
+				bson.M{"$group": bson.M{
+					"_id": "$Genre",
+					"totalCount": bson.M{"$sum": 1},
+				}},
+			},
+			"genre2": bson.A{
+				bson.M{"$group": bson.M{
+					"_id": "$Genre_2",
+					"totalCount": bson.M{"$sum": 1},
+				}},
+			},
+		}},
+		bson.M{"$project": bson.M{
+			"allGenres": bson.M{"$setUnion": []interface{}{"$genre1", "$genre2"}},
+		}},
+		bson.M{"$unwind": "$allGenres"},
+		bson.M{"$group": bson.M{
+			"_id": "$allGenres._id",
+			"totalCount": bson.M{"$sum": "$allGenres.totalCount"},
+		}},
+		bson.M{"$match": bson.M{
+			"_id": bson.M{"$ne": nil},
+		}},
+		bson.M{"$project": bson.M{
+			"fieldValue": "$_id",
+			"_id": 0,
+			"totalCount": "$totalCount",
+		}},
+		bson.M{"$sort": bson.M{
+			"totalCount": -1,
+		}},
 	}
 
-    genre_2s, err := collection.Distinct(context.TODO(), "Genre_2", bson.M{})
+	genreCursor, err := collection.Aggregate(context.TODO(), genrePipeline)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct genres"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch genre data"})
 		return
 	}
+	defer genreCursor.Close(context.TODO())
 
-    uniqueMap := make(map[interface{}]bool)
-    for _, g := range append(genres, genre_2s...) { 
-        uniqueMap[g] = true 
-    }
-    var uniqueGenres []interface{}
-    for g := range uniqueMap { 
-        uniqueGenres = append(uniqueGenres, g) 
-    }
+	var genres []bson.M
+	if err := genreCursor.All(context.TODO(), &genres); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse genre data"})
+		return
+	}
 
     years, err := collection.Distinct(context.TODO(), "Year", bson.M{})
 	if err != nil {
@@ -271,19 +303,66 @@ func ListTypes(c *gin.Context) {
 		return
 	}
 
-    directors, err := collection.Distinct(context.TODO(), "Director", bson.M{})
+	directorPipeline := bson.A{
+		bson.M{"$group": bson.M{
+			"_id": "$Director",
+			"totalCount": bson.M{"$sum": 1},
+		}},
+		bson.M{"$match": bson.M{
+			"totalCount": bson.M{"$gte": 3},
+		}},
+		bson.M{"$sort": bson.M{
+			"totalCount": -1,
+		}},
+		bson.M{"$project": bson.M{
+			"fieldValue": "$_id",
+			"totalCount": 1,
+			"_id": 0,
+		}},
+	}
+	
+	directorCursor, err := collection.Aggregate(context.TODO(), directorPipeline)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct directors"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch directors with counts"})
+		return
+	}
+	defer directorCursor.Close(context.TODO())
+	
+	var directors []bson.M
+	if err = directorCursor.All(context.TODO(), &directors); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse results"})
 		return
 	}
 
+	runtimePipeline := bson.A{
+		bson.M{"$group": bson.M{
+			"_id": nil,
+			"max": bson.M{"$max": "$Runtime"},
+			"min": bson.M{"$min": "$Runtime"},
+		}},
+	}
+
+	runtimeCursor, err := collection.Aggregate(context.TODO(), runtimePipeline)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to aggregate runtimes"})
+		return
+	}
+	defer runtimeCursor.Close(context.TODO())
+	
+	var runtimes []bson.M;
+	if err = runtimeCursor.All(context.TODO(), &runtimes); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse runtimes"})
+		return
+	}
+		
 	c.IndentedJSON(http.StatusOK, bson.M{
-		"genre":     uniqueGenres,
+		"genre":     genres,
 		"year":      years,
 		"exclusive": exclusives,
 		"holiday":   holidays,
 		"studio":    studios,
 		"director":  directors,
 		"universes": universes,
+		"runtime": runtimes,
 	})
 }
