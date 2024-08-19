@@ -29,7 +29,6 @@ type rating struct {
 type movie struct {
 	Movie           string    `json:"movie"`
 	JH_Score        int32     `json:"jh_score"`
-	JV_Score        int32     `json:"jv_score"`
 	Universe        string    `json:"universe"`
 	Sub_Universe    string    `json:"sub_universe"`
 	Genre           string    `json:"genre"`
@@ -39,6 +38,7 @@ type movie struct {
 	Studio          string    `json:"studio"`
 	Year            int32     `json:"year"`
 	Review          string    `json:"review"`
+	Ranking			int32	  `json:"ranking"`
 	Plot            string    `json:"plot"`
 	Poster          string    `json:"poster"`
 	Actors          string    `json:"actors"`

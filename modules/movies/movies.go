@@ -12,8 +12,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-/* Converts a list of strings to a list of integers.
-Returns an error otherwise */
+/*
+	Converts a list of strings to a list of integers.
+	Returns an error otherwise
+*/
 func convertStringsToInts(strs []string)([]int, error) {
     ints := make([]int, len(strs))
     
