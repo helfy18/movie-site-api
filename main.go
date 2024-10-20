@@ -10,7 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/helfy18/movie-site-api/modules/auth"
 	"github.com/helfy18/movie-site-api/modules/movies"
-	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -19,12 +18,6 @@ import (
 func main() {
 	// Initialize Gin router
 	router := gin.Default()
-
-	// Load environment variables from .env file
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
 
 	// Get MongoDB URI from environment variables
 	mongoURI := os.Getenv("MONGOURI")
