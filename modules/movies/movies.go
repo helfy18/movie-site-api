@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
@@ -72,16 +73,33 @@ func ListMovies(c *gin.Context) {
         conditions = append(conditions, bson.M{"Holiday": bson.M{"$in": holiday}})
     }
 
-    year := c.QueryArray("year")
-    if len(year) > 0 {
-        years, err := convertStringsToInts(year)
-        if err != nil {
-            c.JSON(http.StatusBadRequest, gin.H{"error": "year must be integer"})
-            return
+		year := c.QueryArray("year")
+    decade := c.QueryArray("decade")
+    if len(year) > 0 || len(decade) > 0 {
+        var years []int
+
+        // Convert individual years to integers
+        if len(year) > 0 {
+            yearInts, err := convertStringsToInts(year)
+            if err != nil {
+                c.JSON(http.StatusBadRequest, gin.H{"error": "year must be integer"})
+                return
+            }
+            years = append(years, yearInts...)
         }
+
+        // Convert decades into individual years and add to the list
+        for _, d := range decade {
+            yearRange, err := parseDecade(d)
+            if err != nil {
+                c.JSON(http.StatusBadRequest, gin.H{"error": "invalid decade format, expected yyyy-yyyy"})
+                return
+            }
+            years = append(years, yearRange...)
+        }
+
         conditions = append(conditions, bson.M{"Year": bson.M{"$in": years}})
     }
-
     director := c.QueryArray("director")
     if len(director) > 0 {
         conditions = append(conditions, bson.M{"Director": bson.M{"$in": director}})
@@ -128,6 +146,26 @@ func ListMovies(c *gin.Context) {
 		return
 	}
 	c.IndentedJSON(http.StatusOK, movies)
+}
+
+// parseDecade parses a decade in the format "yyyy-yyyy" and returns a slice of individual years.
+func parseDecade(decade string) ([]int, error) {
+	parts := strings.Split(decade, "-")
+	if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid decade format")
+	}
+
+	startYear, err1 := strconv.Atoi(parts[0])
+	endYear, err2 := strconv.Atoi(parts[1])
+	if err1 != nil || err2 != nil || startYear > endYear {
+			return nil, fmt.Errorf("invalid decade range")
+	}
+
+	var years []int
+	for y := startYear; y <= endYear; y++ {
+			years = append(years, y)
+	}
+	return years, nil
 }
 
 /*
