@@ -130,7 +130,6 @@ func ListMovies(c *gin.Context) {
         query = bson.M{}
     }
     
-    fmt.Println(query)
 	client := c.MustGet("mongoClient").(*mongo.Client)
 
 	collection := client.Database("jdmovies").Collection("movies")
@@ -174,13 +173,13 @@ func parseDecade(decade string) ([]int, error) {
 */
 func GetMovie(c *gin.Context) {
     query := bson.M{}
-    tmdbid := c.Query("tmdbid")
-    if tmdbid != "" {
-        TMDBId, err := strconv.Atoi(tmdbid)
-        if err != nil {
-            c.JSON(http.StatusBadRequest, gin.H{"error": "year must be an integer"})
-        }
-        query["TMDBId"] = TMDBId
+    tmdbid := c.QueryArray("tmdbid")
+    if len(tmdbid) > 0 {
+			TMDBid, err := convertStringsToInts(tmdbid)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error" : "tmdbid must be integer"})
+			}
+      query["TMDBId"] = bson.M{"$in": TMDBid}
     } else {
         title := c.Query("title")
         year := c.Query("year")
@@ -199,14 +198,20 @@ func GetMovie(c *gin.Context) {
 	client := c.MustGet("mongoClient").(*mongo.Client)
 	collection := client.Database("jdmovies").Collection("movies")
 
-	var movie movie
-	err := collection.FindOne(context.TODO(), query).Decode(&movie)
+	cursor, err := collection.Find(context.TODO(), query)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch movies"})
 		return
 	}
+	var movies []movie
 
-	c.IndentedJSON(http.StatusOK, movie)
+	if err := cursor.All(context.TODO(), &movies); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode movies " + err.Error()})
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, movies)
+
 }
 
 func ListTypes(c *gin.Context) {
