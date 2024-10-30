@@ -51,4 +51,8 @@ type movie struct {
 	Budget          string    `json:"budget"`
 	TMDBId          int32     `json:"tmdbid"`
 	Recommendations []int32   `json:"recommendations"`
+	RottenTomatoes	string		`json:"rottentomatoes"`
+	IMDB						string		`json:"imdb"`
+	Metacritic			string		`json:"metacritic"`
+	Trailer					string		`json:"trailer"`
 }
