@@ -61,6 +61,7 @@ func main() {
 	// Define routes
 	router.GET("/movies/list", movies.ListMovies)
 	router.GET("/movies/get", movies.GetMovie)
+	router.GET("/movies/list/id", movies.GetMovieById)
 	router.GET("/types/list", movies.ListTypes)
 	router.GET("movies/count", movies.GetMovieCount)
 
