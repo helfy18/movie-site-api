@@ -417,5 +417,5 @@ func GetMovieCount(c *gin.Context) {
         return
     }
 
-    c.JSON(http.StatusOK, gin.H{"count": count})
+    c.JSON(http.StatusOK, count)
 }
