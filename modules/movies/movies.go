@@ -406,3 +406,16 @@ func ListTypes(c *gin.Context) {
 		"runtime": runtimes,
 	})
 }
+
+func GetMovieCount(c *gin.Context) {
+	client := c.MustGet("mongoClient").(*mongo.Client)
+	collection := client.Database("jdmovies").Collection("movies")
+
+	count, err := collection.CountDocuments(context.TODO(), bson.M{})
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to count documents"})
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"count": count})
+}
