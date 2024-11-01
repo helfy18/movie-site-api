@@ -55,7 +55,7 @@ func main() {
 	})
 	
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{os.Getenv("SITEURL")}
+	config.AllowOrigins = []string{os.Getenv("SITEURL"), os.Getenv(("LOCALURL"))}
 	router.Use(cors.New(config))
 
 	// Define routes
