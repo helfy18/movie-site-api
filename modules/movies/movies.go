@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 /*
@@ -131,9 +132,11 @@ func ListMovies(c *gin.Context) {
     }
     
 	client := c.MustGet("mongoClient").(*mongo.Client)
-
 	collection := client.Database("jdmovies").Collection("movies")
-	cursor, err := collection.Find(context.TODO(), query)
+
+	findOptions := options.Find().SetSort(bson.D{{Key: "Ranking", Value: 1}})
+
+	cursor, err := collection.Find(context.TODO(), query, findOptions)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch movies"})
 		return
