@@ -455,3 +455,31 @@ func GetMovieCount(c *gin.Context) {
 
     c.JSON(http.StatusOK, count)
 }
+
+func GetMostRecent(c *gin.Context) {
+	client := c.MustGet("mongoClient").(*mongo.Client)
+	collection := client.Database("jdmovies").Collection("movies")
+
+	limit, err := strconv.ParseInt(c.Query("count"), 10, 64)
+	if err != nil {
+		limit = 20
+	}
+
+	opts := options.Find()
+	opts.SetSort(bson.M{"ms_added": -1})
+	opts.SetLimit(limit)
+
+	cursor, err := collection.Find(context.TODO(), bson.M{}, opts)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch movies"})
+		return
+	}
+	var movies []movie
+
+	if err := cursor.All(context.TODO(), &movies); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode movies " + err.Error()})
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, movies)
+}
