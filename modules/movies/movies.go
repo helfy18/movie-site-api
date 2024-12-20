@@ -123,6 +123,17 @@ func ListMovies(c *gin.Context) {
         conditions = append(conditions, bson.M{"Runtime": bson.M{"$gt": runtimes[0], "$lt": runtimes[1]}})
     }
 
+		provider := c.QueryArray("provider")
+		if len(provider) > 0 {
+			var providers []int
+			providers, err := convertStringsToInts(provider)
+			if err != nil {
+					c.JSON(http.StatusBadRequest, gin.H{"error": "provider must be id"})
+					return
+			}
+			conditions = append(conditions, bson.M{"Provider.flatrate.provider_id": bson.M{"$in": providers}})
+		}
+		
     // Combine all conditions with $and
     var query bson.M
     if len(conditions) > 0 {
