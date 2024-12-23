@@ -372,6 +372,38 @@ func ListTypes(c *gin.Context) {
 		return
 	}
 
+	pipeline := bson.A{
+			bson.M{"$unwind": bson.M{"path": "$Provider.flatrate"}},
+			bson.M{"$group": bson.M{
+					"_id": "$Provider.flatrate.provider_id",
+					"logo_path": bson.M{"$first": "$Provider.flatrate.logo_path"},
+					"provider_id": bson.M{"$first": "$Provider.flatrate.provider_id"},
+					"provider_name": bson.M{"$first": "$Provider.flatrate.provider_name"},
+					"display_priority": bson.M{"$first": "$Provider.flatrate.display_priority"},
+			}},
+			bson.M{"$sort": bson.M{"display_priority": 1}},
+			bson.M{"$project": bson.M{
+					"_id": 0,
+					"logo_path": 1,
+					"provider_id": 1,
+					"provider_name": 1,
+					"display_priority": 1,
+			}},
+	}
+
+	providerCursor, err := collection.Aggregate(context.TODO(), pipeline)
+
+	if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch providers"})
+			return
+	}
+	defer providerCursor.Close(context.TODO())
+
+	var providers []bson.M
+	if err := providerCursor.All(context.TODO(), &providers); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse providers"})
+			return
+	}
     exclusives, err := collection.Distinct(context.TODO(), "Exclusive", bson.M{})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct exclusives"})
@@ -443,6 +475,7 @@ func ListTypes(c *gin.Context) {
 	}
 		
 	c.IndentedJSON(http.StatusOK, bson.M{
+		"provider": providers,
 		"genre":     genres,
 		"year":      years,
 		"exclusive": exclusives,
