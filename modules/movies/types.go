@@ -39,6 +39,7 @@ type movie struct {
 	Year            int32     `json:"year"`
 	Review          string    `json:"review"`
 	Ranking			int32	  `json:"ranking"`
+	dani_approved	bool	  `json:"dani_approved"`
 	Plot            string    `json:"plot"`
 	Poster          string    `json:"poster"`
 	Actors          string    `json:"actors"`
@@ -52,8 +53,8 @@ type movie struct {
 	TMDBId          int32     `json:"tmdbid"`
 	Recommendations []int32   `json:"recommendations"`
 	RottenTomatoes	string		`json:"rottentomatoes"`
-	IMDB						string		`json:"imdb"`
-	Metacritic			string		`json:"metacritic"`
-	Trailer					string		`json:"trailer"`
-	Ms_added				int64			`json:"ms_added"`
+	IMDB			string		`json:"imdb"`
+	Metacritic		string		`json:"metacritic"`
+	Trailer			string		`json:"trailer"`
+	Ms_added		int64		`json:"ms_added"`
 }
