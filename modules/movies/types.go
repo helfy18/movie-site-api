@@ -39,7 +39,7 @@ type movie struct {
 	Year            int32     `json:"year"`
 	Review          string    `json:"review"`
 	Ranking			int32	  `json:"ranking"`
-	dani_approved	bool	  `json:"dani_approved"`
+	Dani_Approved	bool	  `json:"dani_approved"`
 	Plot            string    `json:"plot"`
 	Poster          string    `json:"poster"`
 	Actors          string    `json:"actors"`
