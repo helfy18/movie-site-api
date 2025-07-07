@@ -65,6 +65,7 @@ func main() {
 	router.GET("/types/list", movies.ListTypes)
 	router.GET("/movies/count", movies.GetMovieCount)
 	router.GET("/movies/mostRecent", movies.GetMostRecent)
+	router.GET("/movies/random", movies.GetRandomMovie)
 
 	router.POST("/auth/login", auth.Login)
 
