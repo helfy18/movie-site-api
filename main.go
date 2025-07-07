@@ -42,7 +42,7 @@ func main() {
 	}()
 
 	// Send a ping to confirm a successful connection
-	if err := client.Database("admin").RunCommand(context.TODO(), bson.D{{"ping", 1}}).Err(); err != nil {
+	if err := client.Database("admin").RunCommand(context.TODO(), bson.D{{Key: "ping", Value: 1}}).Err(); err != nil {
 		log.Fatalf("Failed to ping MongoDB: %v", err)
 	}
 
@@ -53,7 +53,7 @@ func main() {
 		c.Set("mongoClient", client)
 		c.Next()
 	})
-	
+
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{os.Getenv("SITEURL"), os.Getenv(("LOCALURL"))}
 	router.Use(cors.New(config))

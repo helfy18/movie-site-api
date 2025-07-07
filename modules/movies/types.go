@@ -8,9 +8,11 @@ type providerInfo struct {
 	Display_priority int32  `json:"display_priority"`
 }
 
-/* The format that the providers is stored in the database.
-	Contains lists of providers based on the availability of
-	the movie (to rent, buy or stream) */
+/*
+	 The format that the providers is stored in the database.
+		Contains lists of providers based on the availability of
+		the movie (to rent, buy or stream)
+*/
 type providers struct {
 	Link     string         `json:"link"`
 	Rent     []providerInfo `json:"rent"`
@@ -24,8 +26,10 @@ type rating struct {
 	Value  string `json:"value"`
 }
 
-/* Information about a movie as stored in the database. Some fields
-	will be empty. */
+/*
+	 Information about a movie as stored in the database. Some fields
+		will be empty.
+*/
 type movie struct {
 	Movie           string    `json:"movie"`
 	JH_Score        int32     `json:"jh_score"`
@@ -38,8 +42,8 @@ type movie struct {
 	Studio          string    `json:"studio"`
 	Year            int32     `json:"year"`
 	Review          string    `json:"review"`
-	Ranking			int32	  `json:"ranking"`
-	Dani_Approved	bool	  `json:"dani_approved"`
+	Ranking         int32     `json:"ranking"`
+	Dani_Approved   bool      `json:"dani_approved"`
 	Plot            string    `json:"plot"`
 	Poster          string    `json:"poster"`
 	Actors          string    `json:"actors"`
@@ -52,9 +56,9 @@ type movie struct {
 	Budget          string    `json:"budget"`
 	TMDBId          int32     `json:"tmdbid"`
 	Recommendations []int32   `json:"recommendations"`
-	RottenTomatoes	string		`json:"rottentomatoes"`
-	IMDB			string		`json:"imdb"`
-	Metacritic		string		`json:"metacritic"`
-	Trailer			string		`json:"trailer"`
-	Ms_added		int64		`json:"ms_added"`
+	RottenTomatoes  string    `json:"rottentomatoes"`
+	IMDB            string    `json:"imdb"`
+	Metacritic      string    `json:"metacritic"`
+	Trailer         string    `json:"trailer"`
+	Ms_added        int64     `json:"ms_added"`
 }
