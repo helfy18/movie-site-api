@@ -1,0 +1,13 @@
+name: Ping Movies API
+
+on:
+  schedule:
+    - cron: "0 */1 * * *" # Every hour on the hour (UTC time)
+  workflow_dispatch: # Allow manual run
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send request to Movies API
+        run: curl -X GET https://rival-rodie-helfy18-8da32b7b.koyeb.app/movies/count
