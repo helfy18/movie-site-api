@@ -2,7 +2,7 @@ name: Ping Movies API
 
 on:
   schedule:
-    - cron: "0 */1 * * *" # Every hour on the hour (UTC time)
+    - cron: "*/5 * * * *"
   workflow_dispatch: # Allow manual run
 
 jobs:
