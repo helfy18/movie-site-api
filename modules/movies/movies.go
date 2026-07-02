@@ -151,11 +151,12 @@ func ListMovies(c *gin.Context) {
 		return
 	}
 
-	var movies []movie
+	movies := make([]movie, 0)
 	if err := cursor.All(context.TODO(), &movies); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode movies " + err.Error()})
 		return
 	}
+
 	c.IndentedJSON(http.StatusOK, movies)
 }
 
