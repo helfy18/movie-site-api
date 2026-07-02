@@ -245,7 +245,7 @@ func GetMovieById(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch movies"})
 		return
 	}
-	var movies []movie
+	movies := make([]movie, 0)
 
 	if err := cursor.All(context.TODO(), &movies); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode movies " + err.Error()})
@@ -661,7 +661,7 @@ func GetMostRecent(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch movies"})
 		return
 	}
-	var movies []movie
+	movies := make([]movie, 0)
 
 	if err := cursor.All(context.TODO(), &movies); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode movies " + err.Error()})
