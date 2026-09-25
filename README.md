@@ -50,15 +50,25 @@ To start the API server, simply run:
 
 The server will start, and you'll be able to access the API at http://localhost:8080.
 
-### Example Endpoint
+### Endpoints
 
-- **Get Movies**: Fetch a list of all movies
+| Method | Path                | Description                                                        |
+| ------ | ------------------- | ------------------------------------------------------------------ |
+| GET    | `/movies/list`      | List movies (filterable by genre, universe, year, runtime, etc.)   |
+| GET    | `/movies/get`       | Get one movie by `tmdbid`, or by `title` and `year`                |
+| GET    | `/movies/list/id`   | Get movies for one or more `tmdbid` values                         |
+| GET    | `/movies/random`    | Get a random movie matching the same filters as `/movies/list`     |
+| GET    | `/movies/mostRecent`| Get the most recently added movies (`count`, default 20)           |
+| GET    | `/movies/count`     | Get the total number of movies                                     |
+| GET    | `/types/list`       | Get distinct universes, genres, years, providers, studios, etc.    |
+| POST   | `/auth/login`       | Log in                                                             |
 
-  GET /movies
+### Example Response
 
-  Response:
+Every movie endpoint returns the full movie object. For example, `GET /movies/get?tmdbid=123456`:
 
-  {
+```json
+{
   "movie": "Example Movie",
   "jh_score": 85,
   "universe": "Example Universe",
@@ -70,16 +80,40 @@ The server will start, and you'll be able to access the API at http://localhost:
   "studio": "Example Studio",
   "year": 2024,
   "review": "Great movie!",
+  "ranking": 42,
+  "dani_approved": true,
   "plot": "An example plot.",
   "poster": "http://example.com/poster.jpg",
   "actors": "John Doe, Jane Doe",
   "director": "Director Name",
-  "ratings": "5 stars",
+  "ratings": [
+    { "source": "Internet Movie Database", "value": "8.5/10" },
+    { "source": "Rotten Tomatoes", "value": "92%" },
+    { "source": "Metacritic", "value": "80/100" }
+  ],
   "boxoffice": "$1,000,000",
   "rated": "PG-13",
   "runtime": 120,
-  "provider": "Example Provider",
+  "provider": {
+    "link": "https://www.themoviedb.org/movie/123456/watch",
+    "rent": [
+      { "logo_path": "/example.jpg", "provider_id": 2, "provider_name": "Apple TV", "display_priority": 4 }
+    ],
+    "flatrate": [
+      { "logo_path": "/example.jpg", "provider_id": 8, "provider_name": "Netflix", "display_priority": 0 }
+    ],
+    "buy": [
+      { "logo_path": "/example.jpg", "provider_id": 10, "provider_name": "Amazon Video", "display_priority": 3 }
+    ]
+  },
   "budget": "$100,000,000",
   "tmdbid": 123456,
-  "recommendations": "['Another Movie']"
-  }
+  "recommendations": [234567, 345678],
+  "rottentomatoes": "92%",
+  "imdb": "8.5",
+  "metacritic": "80",
+  "trailer": "https://www.youtube.com/watch?v=example",
+  "origin_country": "US",
+  "ms_added": 1700000000000
+}
+```

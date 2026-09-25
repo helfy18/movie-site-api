@@ -60,5 +60,6 @@ type movie struct {
 	IMDB            string    `json:"imdb"`
 	Metacritic      string    `json:"metacritic"`
 	Trailer         string    `json:"trailer"`
+	Origin_Country  string    `json:"origin_country"`
 	Ms_added        int64     `json:"ms_added"`
 }
