@@ -117,3 +117,20 @@ Every movie endpoint returns the full movie object. For example, `GET /movies/ge
   "ms_added": 1700000000000
 }
 ```
+
+## Updating the movie data
+
+The Google Sheet is the source of truth. `scripts/syncMovies.py` reads it, fills in
+TMDB/OMDB details, writes them back to the sheet, and upserts everything into Mongo.
+
+```shell
+pip3 install -r scripts/requirements.txt   # once
+python3 scripts/syncMovies.py --check      # read-only connection test
+python3 scripts/syncMovies.py --new-only   # after adding movies to the sheet
+python3 scripts/syncMovies.py --skip-enrich  # after reordering or editing scores/reviews
+python3 scripts/syncMovies.py              # full refresh (OMDB only for recent movies)
+python3 scripts/syncMovies.py --backup     # snapshot Mongo + sheet to scripts/backups/
+```
+
+Settings live in `.env` next to this README (gitignored); the header of the script lists the keys.
+The `CAST` table in the script must match the `movie` struct in `modules/movies/types.go`.

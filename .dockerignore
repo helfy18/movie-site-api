@@ -2,3 +2,5 @@
 node_modules
 tmp
 *.log
+scripts
+.env
