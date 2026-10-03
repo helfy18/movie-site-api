@@ -17,6 +17,10 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+// Validation tests never reach the database, so a handler without a
+// collection is enough.
+var h = NewHandler(nil)
+
 // newTestContext returns a gin context for a GET request with the given query string.
 func newTestContext(rawQuery string) (*gin.Context, *httptest.ResponseRecorder) {
 	w := httptest.NewRecorder()
@@ -185,19 +189,19 @@ func assertSingleErrorResponse(t *testing.T, w *httptest.ResponseRecorder, wantE
 func TestGetMovieValidation(t *testing.T) {
 	t.Run("non-integer tmdbid", func(t *testing.T) {
 		c, w := newTestContext("tmdbid=abc")
-		GetMovie(c)
+		h.GetMovie(c)
 		assertSingleErrorResponse(t, w, "tmdbid must be an integer")
 	})
 
 	t.Run("missing parameters", func(t *testing.T) {
 		c, w := newTestContext("")
-		GetMovie(c)
+		h.GetMovie(c)
 		assertSingleErrorResponse(t, w, "Include tmdbid or title and year")
 	})
 
 	t.Run("non-integer year", func(t *testing.T) {
 		c, w := newTestContext("title=Up&year=abc")
-		GetMovie(c)
+		h.GetMovie(c)
 		assertSingleErrorResponse(t, w, "year must be an integer")
 	})
 }
@@ -205,25 +209,35 @@ func TestGetMovieValidation(t *testing.T) {
 func TestGetMovieByIdValidation(t *testing.T) {
 	t.Run("missing tmdbid", func(t *testing.T) {
 		c, w := newTestContext("")
-		GetMovieById(c)
+		h.GetMovieById(c)
 		assertSingleErrorResponse(t, w, "Include at least one tmdbid")
 	})
 
 	t.Run("non-integer tmdbid", func(t *testing.T) {
 		c, w := newTestContext("tmdbid=abc")
-		GetMovieById(c)
+		h.GetMovieById(c)
 		assertSingleErrorResponse(t, w, "tmdbid must be integer")
 	})
 }
 
 func TestListMoviesValidation(t *testing.T) {
 	c, w := newTestContext("year=abc")
-	ListMovies(c)
+	h.ListMovies(c)
 	assertSingleErrorResponse(t, w, "year must be integer")
 }
 
 func TestGetRandomMovieValidation(t *testing.T) {
 	c, w := newTestContext("rating=high")
-	GetRandomMovie(c)
+	h.GetRandomMovie(c)
 	assertSingleErrorResponse(t, w, "rating must have two values for range, start and stop")
+}
+
+func TestGetMostRecentValidation(t *testing.T) {
+	for _, bad := range []string{"count=abc", "count=-5", "count=0"} {
+		t.Run(bad, func(t *testing.T) {
+			c, w := newTestContext(bad)
+			h.GetMostRecent(c)
+			assertSingleErrorResponse(t, w, "count must be a positive integer")
+		})
+	}
 }

@@ -15,6 +15,13 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+func getenvDefault(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
+
 func main() {
 	// Initialize Gin router
 	router := gin.Default()
@@ -48,12 +55,6 @@ func main() {
 
 	fmt.Println("Pinged your deployment. You successfully connected to MongoDB!")
 
-	// Middleware to inject MongoDB client into the context
-	router.Use(func(c *gin.Context) {
-		c.Set("mongoClient", client)
-		c.Next()
-	})
-
 	var allowOrigins []string
 	for _, key := range []string{"SITEURL", "LOCALURL"} {
 		if origin := os.Getenv(key); origin != "" {
@@ -67,17 +68,22 @@ func main() {
 	config.AllowOrigins = allowOrigins
 	router.Use(cors.New(config))
 
+	// Database and collection names match the defaults used by scripts/syncMovies.py
+	movieHandler := movies.NewHandler(
+		client.Database(getenvDefault("MONGO_DB", "jdmovies")).
+			Collection(getenvDefault("MONGO_COLLECTION", "movies")))
+
 	// Define routes
-	router.GET("/movies/list", movies.ListMovies)
-	router.GET("/movies/get", movies.GetMovie)
-	router.GET("/movies/list/id", movies.GetMovieById)
-	router.GET("/types/list", movies.ListTypes)
-	router.GET("/movies/count", movies.GetMovieCount)
-	router.GET("/movies/mostRecent", movies.GetMostRecent)
-	router.GET("/movies/random", movies.GetRandomMovie)
+	router.GET("/movies/list", movieHandler.ListMovies)
+	router.GET("/movies/get", movieHandler.GetMovie)
+	router.GET("/movies/list/id", movieHandler.GetMovieById)
+	router.GET("/types/list", movieHandler.ListTypes)
+	router.GET("/movies/count", movieHandler.GetMovieCount)
+	router.GET("/movies/mostRecent", movieHandler.GetMostRecent)
+	router.GET("/movies/random", movieHandler.GetRandomMovie)
 
 	router.POST("/auth/login", auth.Login)
 
-	// Run the Gin server
-	router.Run() // Default port is 8080
+	// Run the Gin server (default port is 8080)
+	log.Fatal(router.Run())
 }

@@ -1,7 +1,6 @@
 package movies
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -14,6 +13,19 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+/*
+Handler holds the shared dependencies for the movie endpoints. The collection
+is injected once at startup instead of being passed through gin's context on
+every request.
+*/
+type Handler struct {
+	collection *mongo.Collection
+}
+
+func NewHandler(collection *mongo.Collection) *Handler {
+	return &Handler{collection: collection}
+}
 
 /*
 Converts a list of strings to a list of integers.
@@ -161,25 +173,23 @@ Accepts optional parameters genre, universe, exclusive, studio, holiday,
 year, decade, director, runtime (range), rating (range) and provider.
 Returns list of movies matching the description.
 */
-func ListMovies(c *gin.Context) {
+func (h *Handler) ListMovies(c *gin.Context) {
 	query, ok := buildFilterQuery(c)
 	if !ok {
 		return
 	}
 
-	client := c.MustGet("mongoClient").(*mongo.Client)
-	collection := client.Database("jdmovies").Collection("movies")
 
 	findOptions := options.Find().SetSort(bson.D{{Key: "Ranking", Value: 1}})
 
-	cursor, err := collection.Find(context.TODO(), query, findOptions)
+	cursor, err := h.collection.Find(c.Request.Context(), query, findOptions)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch movies"})
 		return
 	}
 
 	movies := make([]movie, 0)
-	if err := cursor.All(context.TODO(), &movies); err != nil {
+	if err := cursor.All(c.Request.Context(), &movies); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode movies " + err.Error()})
 		return
 	}
@@ -211,7 +221,7 @@ func parseDecade(decade string) ([]int, error) {
 		Accepts tmdbid(int) or (title(string) & year(int)).
 	    Returns information about one movie.
 */
-func GetMovie(c *gin.Context) {
+func (h *Handler) GetMovie(c *gin.Context) {
 	query := bson.M{}
 	tmdbid := c.Query("tmdbid")
 	if tmdbid != "" {
@@ -237,11 +247,9 @@ func GetMovie(c *gin.Context) {
 		query["Year"] = Year
 	}
 
-	client := c.MustGet("mongoClient").(*mongo.Client)
-	collection := client.Database("jdmovies").Collection("movies")
 
 	var movie movie
-	err := collection.FindOne(context.TODO(), query).Decode(&movie)
+	err := h.collection.FindOne(c.Request.Context(), query).Decode(&movie)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "No movie found matching the criteria"})
@@ -257,7 +265,7 @@ func GetMovie(c *gin.Context) {
 /*
 Accepts tmdbid(int[])
 */
-func GetMovieById(c *gin.Context) {
+func (h *Handler) GetMovieById(c *gin.Context) {
 	query := bson.M{}
 	tmdbid := c.QueryArray("tmdbid")
 	if len(tmdbid) > 0 {
@@ -271,17 +279,15 @@ func GetMovieById(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Include at least one tmdbid"})
 		return
 	}
-	client := c.MustGet("mongoClient").(*mongo.Client)
-	collection := client.Database("jdmovies").Collection("movies")
 
-	cursor, err := collection.Find(context.TODO(), query)
+	cursor, err := h.collection.Find(c.Request.Context(), query)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch movies"})
 		return
 	}
 	movies := make([]movie, 0)
 
-	if err := cursor.All(context.TODO(), &movies); err != nil {
+	if err := cursor.All(c.Request.Context(), &movies); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode movies " + err.Error()})
 		return
 	}
@@ -293,7 +299,7 @@ func GetMovieById(c *gin.Context) {
 Accepts the same optional filter parameters as ListMovies.
 Returns one random movie matching the description.
 */
-func GetRandomMovie(c *gin.Context) {
+func (h *Handler) GetRandomMovie(c *gin.Context) {
 	query, ok := buildFilterQuery(c)
 	if !ok {
 		return
@@ -304,16 +310,14 @@ func GetRandomMovie(c *gin.Context) {
 		bson.M{"$sample": bson.M{"size": 1}},
 	}
 
-	client := c.MustGet("mongoClient").(*mongo.Client)
-	collection := client.Database("jdmovies").Collection("movies")
 
-	cursor, err := collection.Aggregate(context.TODO(), pipeline)
+	cursor, err := h.collection.Aggregate(c.Request.Context(), pipeline)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch movies"})
 		return
 	}
 	var movies []movie
-	if err := cursor.All(context.TODO(), &movies); err != nil {
+	if err := cursor.All(c.Request.Context(), &movies); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode movie " + err.Error()})
 		return
 	}
@@ -326,9 +330,7 @@ func GetRandomMovie(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, movies[0])
 }
 
-func ListTypes(c *gin.Context) {
-	client := c.MustGet("mongoClient").(*mongo.Client)
-	collection := client.Database("jdmovies").Collection("movies")
+func (h *Handler) ListTypes(c *gin.Context) {
 
 	// Aggregation universePipeline for universes and sub-universes
 	universePipeline := bson.A{
@@ -370,15 +372,15 @@ func ListTypes(c *gin.Context) {
 		}},
 	}
 
-	cursor, err := collection.Aggregate(context.TODO(), universePipeline)
+	cursor, err := h.collection.Aggregate(c.Request.Context(), universePipeline)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch universe data"})
 		return
 	}
-	defer cursor.Close(context.TODO())
+	defer cursor.Close(c.Request.Context())
 
 	var universes []bson.M
-	if err := cursor.All(context.TODO(), &universes); err != nil {
+	if err := cursor.All(c.Request.Context(), &universes); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse universe data"})
 		return
 	}
@@ -423,20 +425,20 @@ func ListTypes(c *gin.Context) {
 		}},
 	}
 
-	genreCursor, err := collection.Aggregate(context.TODO(), genrePipeline)
+	genreCursor, err := h.collection.Aggregate(c.Request.Context(), genrePipeline)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch genre data"})
 		return
 	}
-	defer genreCursor.Close(context.TODO())
+	defer genreCursor.Close(c.Request.Context())
 
 	var genres []bson.M
-	if err := genreCursor.All(context.TODO(), &genres); err != nil {
+	if err := genreCursor.All(c.Request.Context(), &genres); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse genre data"})
 		return
 	}
 
-	years, err := collection.Distinct(context.TODO(), "Year", bson.M{})
+	years, err := h.collection.Distinct(c.Request.Context(), "Year", bson.M{})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct years"})
 		return
@@ -461,32 +463,32 @@ func ListTypes(c *gin.Context) {
 		}},
 	}
 
-	providerCursor, err := collection.Aggregate(context.TODO(), pipeline)
+	providerCursor, err := h.collection.Aggregate(c.Request.Context(), pipeline)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch providers"})
 		return
 	}
-	defer providerCursor.Close(context.TODO())
+	defer providerCursor.Close(c.Request.Context())
 
 	var providers []bson.M
-	if err := providerCursor.All(context.TODO(), &providers); err != nil {
+	if err := providerCursor.All(c.Request.Context(), &providers); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse providers"})
 		return
 	}
-	exclusives, err := collection.Distinct(context.TODO(), "Exclusive", bson.M{})
+	exclusives, err := h.collection.Distinct(c.Request.Context(), "Exclusive", bson.M{})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct exclusives"})
 		return
 	}
 
-	holidays, err := collection.Distinct(context.TODO(), "Holiday", bson.M{})
+	holidays, err := h.collection.Distinct(c.Request.Context(), "Holiday", bson.M{})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct holidays"})
 		return
 	}
 
-	studios, err := collection.Distinct(context.TODO(), "Studio", bson.M{})
+	studios, err := h.collection.Distinct(c.Request.Context(), "Studio", bson.M{})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct studios"})
 		return
@@ -510,15 +512,15 @@ func ListTypes(c *gin.Context) {
 		}},
 	}
 
-	directorCursor, err := collection.Aggregate(context.TODO(), directorPipeline)
+	directorCursor, err := h.collection.Aggregate(c.Request.Context(), directorPipeline)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch directors with counts"})
 		return
 	}
-	defer directorCursor.Close(context.TODO())
+	defer directorCursor.Close(c.Request.Context())
 
 	var directors []bson.M
-	if err = directorCursor.All(context.TODO(), &directors); err != nil {
+	if err = directorCursor.All(c.Request.Context(), &directors); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse results"})
 		return
 	}
@@ -531,15 +533,15 @@ func ListTypes(c *gin.Context) {
 		}},
 	}
 
-	runtimeCursor, err := collection.Aggregate(context.TODO(), runtimePipeline)
+	runtimeCursor, err := h.collection.Aggregate(c.Request.Context(), runtimePipeline)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to aggregate runtimes"})
 		return
 	}
-	defer runtimeCursor.Close(context.TODO())
+	defer runtimeCursor.Close(c.Request.Context())
 
 	var runtimes []bson.M
-	if err = runtimeCursor.All(context.TODO(), &runtimes); err != nil {
+	if err = runtimeCursor.All(c.Request.Context(), &runtimes); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse runtimes"})
 		return
 	}
@@ -557,11 +559,9 @@ func ListTypes(c *gin.Context) {
 	})
 }
 
-func GetMovieCount(c *gin.Context) {
-	client := c.MustGet("mongoClient").(*mongo.Client)
-	collection := client.Database("jdmovies").Collection("movies")
+func (h *Handler) GetMovieCount(c *gin.Context) {
 
-	count, err := collection.CountDocuments(context.TODO(), bson.M{})
+	count, err := h.collection.CountDocuments(c.Request.Context(), bson.M{})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to count documents"})
 		return
@@ -570,27 +570,31 @@ func GetMovieCount(c *gin.Context) {
 	c.JSON(http.StatusOK, count)
 }
 
-func GetMostRecent(c *gin.Context) {
-	client := c.MustGet("mongoClient").(*mongo.Client)
-	collection := client.Database("jdmovies").Collection("movies")
-
-	limit, err := strconv.ParseInt(c.Query("count"), 10, 64)
-	if err != nil {
-		limit = 20
+func (h *Handler) GetMostRecent(c *gin.Context) {
+	const defaultLimit, maxLimit = 20, 100
+	limit := int64(defaultLimit)
+	if count := c.Query("count"); count != "" {
+		parsed, err := strconv.ParseInt(count, 10, 64)
+		if err != nil || parsed < 1 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "count must be a positive integer"})
+			return
+		}
+		limit = min(parsed, maxLimit)
 	}
+
 
 	opts := options.Find()
 	opts.SetSort(bson.M{"ms_added": -1})
 	opts.SetLimit(limit)
 
-	cursor, err := collection.Find(context.TODO(), bson.M{}, opts)
+	cursor, err := h.collection.Find(c.Request.Context(), bson.M{}, opts)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch movies"})
 		return
 	}
 	movies := make([]movie, 0)
 
-	if err := cursor.All(context.TODO(), &movies); err != nil {
+	if err := cursor.All(c.Request.Context(), &movies); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode movies " + err.Error()})
 		return
 	}
