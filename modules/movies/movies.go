@@ -35,11 +35,12 @@ func convertStringsToInts(strs []string) ([]int, error) {
 }
 
 /*
-Accepts optional parameters genre, universe, exclusive,
-studio, holiday, year, director, runtime (range)
-Returns list of movies matching the description.
+Builds a MongoDB filter from the optional query parameters genre, universe,
+exclusive, studio, holiday, year, decade, director, runtime (range),
+rating (range) and provider. Writes a 400 response and returns false
+when a parameter is invalid.
 */
-func ListMovies(c *gin.Context) {
+func buildFilterQuery(c *gin.Context) (bson.M, bool) {
 	var conditions []bson.M
 
 	genres := c.QueryArray("genre")
@@ -85,7 +86,7 @@ func ListMovies(c *gin.Context) {
 			yearInts, err := convertStringsToInts(year)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "year must be integer"})
-				return
+				return nil, false
 			}
 			years = append(years, yearInts...)
 		}
@@ -95,13 +96,14 @@ func ListMovies(c *gin.Context) {
 			yearRange, err := parseDecade(d)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid decade format, expected yyyy-yyyy"})
-				return
+				return nil, false
 			}
 			years = append(years, yearRange...)
 		}
 
 		conditions = append(conditions, bson.M{"Year": bson.M{"$in": years}})
 	}
+
 	director := c.QueryArray("director")
 	if len(director) > 0 {
 		conditions = append(conditions, bson.M{"Director": bson.M{"$in": director}})
@@ -111,34 +113,58 @@ func ListMovies(c *gin.Context) {
 	if len(runtime) > 0 {
 		if len(runtime) != 2 {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "runtime must have two values for range, start and stop"})
-			return
+			return nil, false
 		}
 		runtimes, err := convertStringsToInts(runtime)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "runtime must have two values for range, start and stop"})
-			return
+			return nil, false
 		}
 		sort.Ints(runtimes)
 		conditions = append(conditions, bson.M{"Runtime": bson.M{"$gte": runtimes[0], "$lte": runtimes[1]}})
 	}
 
+	rating := c.QueryArray("rating")
+	if len(rating) > 0 {
+		if len(rating) != 2 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "rating must have two values for range, start and stop"})
+			return nil, false
+		}
+		ratings, err := convertStringsToInts(rating)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "rating must have two values for range, start and stop"})
+			return nil, false
+		}
+		sort.Ints(ratings)
+		conditions = append(conditions, bson.M{"JH_Score": bson.M{"$gte": ratings[0], "$lte": ratings[1]}})
+	}
+
 	provider := c.QueryArray("provider")
 	if len(provider) > 0 {
-		var providers []int
 		providers, err := convertStringsToInts(provider)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "provider must be id"})
-			return
+			return nil, false
 		}
 		conditions = append(conditions, bson.M{"Provider.flatrate.provider_id": bson.M{"$in": providers}})
 	}
 
 	// Combine all conditions with $and
-	var query bson.M
 	if len(conditions) > 0 {
-		query = bson.M{"$and": conditions}
-	} else {
-		query = bson.M{}
+		return bson.M{"$and": conditions}, true
+	}
+	return bson.M{}, true
+}
+
+/*
+Accepts optional parameters genre, universe, exclusive, studio, holiday,
+year, decade, director, runtime (range), rating (range) and provider.
+Returns list of movies matching the description.
+*/
+func ListMovies(c *gin.Context) {
+	query, ok := buildFilterQuery(c)
+	if !ok {
+		return
 	}
 
 	client := c.MustGet("mongoClient").(*mongo.Client)
@@ -263,121 +289,14 @@ func GetMovieById(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, movies)
 }
 
+/*
+Accepts the same optional filter parameters as ListMovies.
+Returns one random movie matching the description.
+*/
 func GetRandomMovie(c *gin.Context) {
-	var conditions []bson.M
-
-	genres := c.QueryArray("genre")
-	if len(genres) > 0 {
-		genreCondition := bson.M{"$or": []bson.M{
-			{"Genre": bson.M{"$in": genres}},
-			{"Genre_2": bson.M{"$in": genres}},
-		}}
-		conditions = append(conditions, genreCondition)
-	}
-
-	universes := c.QueryArray("universe")
-	if len(universes) > 0 {
-		universeCondition := bson.M{"$or": []bson.M{
-			{"Universe": bson.M{"$in": universes}},
-			{"Sub_Universe": bson.M{"$in": universes}},
-		}}
-		conditions = append(conditions, universeCondition)
-	}
-
-	exclusives := c.QueryArray("exclusive")
-	if len(exclusives) > 0 {
-		conditions = append(conditions, bson.M{"Exclusive": bson.M{"$in": exclusives}})
-	}
-
-	studio := c.QueryArray("studio")
-	if len(studio) > 0 {
-		conditions = append(conditions, bson.M{"Studio": bson.M{"$in": studio}})
-	}
-
-	holiday := c.QueryArray("holiday")
-	if len(holiday) > 0 {
-		conditions = append(conditions, bson.M{"Holiday": bson.M{"$in": holiday}})
-	}
-
-	year := c.QueryArray("year")
-	decade := c.QueryArray("decade")
-	if len(year) > 0 || len(decade) > 0 {
-		var years []int
-
-		// Convert individual years to integers
-		if len(year) > 0 {
-			yearInts, err := convertStringsToInts(year)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "year must be integer"})
-				return
-			}
-			years = append(years, yearInts...)
-		}
-
-		// Convert decades into individual years and add to the list
-		for _, d := range decade {
-			yearRange, err := parseDecade(d)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid decade format, expected yyyy-yyyy"})
-				return
-			}
-			years = append(years, yearRange...)
-		}
-
-		conditions = append(conditions, bson.M{"Year": bson.M{"$in": years}})
-	}
-	director := c.QueryArray("director")
-	if len(director) > 0 {
-		conditions = append(conditions, bson.M{"Director": bson.M{"$in": director}})
-	}
-
-	runtime := c.QueryArray("runtime")
-	if len(runtime) > 0 {
-		if len(runtime) != 2 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "runtime must have two values for range, start and stop"})
-			return
-		}
-		runtimes, err := convertStringsToInts(runtime)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "runtime must have two values for range, start and stop"})
-			return
-		}
-		sort.Ints(runtimes)
-		conditions = append(conditions, bson.M{"Runtime": bson.M{"$gte": runtimes[0], "$lte": runtimes[1]}})
-	}
-
-	rating := c.QueryArray("rating")
-	if len(rating) > 0 {
-		if len(rating) != 2 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "rating must have two values for range, start and stop"})
-			return
-		}
-		ratings, err := convertStringsToInts(rating)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "rating must have two values for range, start and stop"})
-			return
-		}
-		sort.Ints(ratings)
-		conditions = append(conditions, bson.M{"JH_Score": bson.M{"$gte": ratings[0], "$lte": ratings[1]}})
-	}
-
-	provider := c.QueryArray("provider")
-	if len(provider) > 0 {
-		var providers []int
-		providers, err := convertStringsToInts(provider)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "provider must be id"})
-			return
-		}
-		conditions = append(conditions, bson.M{"Provider.flatrate.provider_id": bson.M{"$in": providers}})
-	}
-
-	// Combine all conditions with $and
-	var query bson.M
-	if len(conditions) > 0 {
-		query = bson.M{"$and": conditions}
-	} else {
-		query = bson.M{}
+	query, ok := buildFilterQuery(c)
+	if !ok {
+		return
 	}
 
 	pipeline := bson.A{
