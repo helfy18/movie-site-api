@@ -86,6 +86,9 @@ CAST = {
     'Cast': json.loads,             # '["Tom Hanks", "Tim Allen"]'  -> list of names
 }
 SKIP_EMPTY = True   # Compass omitted empty cells from documents; keep that behavior
+# Sheet-only columns: the human-readable strings stay in the sheet (and feed
+# the derived Directors/Cast arrays) but are not written to Mongo or the API.
+MONGO_SKIP = {'Director', 'Actors'}
 MONGO_KEY = 'TMDBId'
 BACKUP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backups')   # field used to match sheet rows to Mongo documents
 
@@ -158,6 +161,8 @@ def open_collection():
 def to_doc(row):
     doc = {}
     for k, v in row.items():
+        if k in MONGO_SKIP:
+            continue
         if SKIP_EMPTY and v == '':
             continue
         if k in CAST and v != '':

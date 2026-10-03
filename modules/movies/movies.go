@@ -130,12 +130,7 @@ func buildFilterQuery(c *gin.Context) (bson.M, bool) {
 
 	director := c.QueryArray("director")
 	if len(director) > 0 {
-		// Directors is the array column; the Director string clause keeps
-		// exact-string matching working on data synced before it existed
-		conditions = append(conditions, bson.M{"$or": []bson.M{
-			{"Directors": bson.M{"$in": director}},
-			{"Director": bson.M{"$in": director}},
-		}})
+		conditions = append(conditions, bson.M{"Directors": bson.M{"$in": director}})
 	}
 
 	runtime := c.QueryArray("runtime")
@@ -537,23 +532,12 @@ func (h *Handler) ListTypes(c *gin.Context) {
 		return
 	}
 
-	// Counts individual directors, so co-directed movies count for each
-	// member. Falls back to splitting the Director string on documents
-	// synced before the Directors array column existed.
+	// Counts individual directors, so co-directed movies count for each member
 	directorPipeline := bson.A{
 		bson.M{"$project": bson.M{
-			"names": bson.M{"$ifNull": []interface{}{
-				"$Directors",
-				bson.M{"$split": []interface{}{
-					bson.M{"$ifNull": []interface{}{"$Director", ""}},
-					", ",
-				}},
-			}},
+			"names": "$Directors",
 		}},
 		bson.M{"$unwind": "$names"},
-		bson.M{"$match": bson.M{
-			"names": bson.M{"$ne": ""},
-		}},
 		bson.M{"$group": bson.M{
 			"_id":        "$names",
 			"totalCount": bson.M{"$sum": 1},

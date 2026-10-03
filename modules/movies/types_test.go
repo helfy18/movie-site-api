@@ -14,7 +14,7 @@ import (
 var frontendMovieFields = []string{
 	"movie", "jh_score", "universe", "sub_universe", "genre", "genre_2",
 	"holiday", "exclusive", "studio", "year", "review", "ranking",
-	"dani_approved", "plot", "poster", "actors", "cast", "director", "directors", "ratings",
+	"dani_approved", "plot", "poster", "cast", "directors", "ratings",
 	"boxoffice", "rated", "runtime", "provider", "budget", "tmdbid",
 	"recommendations", "rottentomatoes", "imdb", "metacritic", "trailer",
 	"origin_country", "ms_added",
@@ -38,6 +38,8 @@ var dbDocument = bson.M{
 	"Dani_Approved": true,
 	"Plot":          "Toys come alive.",
 	"Poster":        "https://image.tmdb.org/t/p/w500/uXDfjJbdP4ijW5hWSBrPrlKpxab.jpg",
+	// Director/Actors strings may linger in Mongo until a sync removes them;
+	// the API must ignore them without error
 	"Actors":        "Tom Hanks, Tim Allen",
 	"Cast":          bson.A{"Tom Hanks", "Tim Allen"},
 	"Director":      "John Lasseter",

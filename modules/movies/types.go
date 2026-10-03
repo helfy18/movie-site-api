@@ -49,9 +49,7 @@ type movie struct {
 	Dani_Approved   bool      `json:"dani_approved" bson:"Dani_Approved"`
 	Plot            string    `json:"plot" bson:"Plot"`
 	Poster          string    `json:"poster" bson:"Poster"`
-	Actors          string    `json:"actors" bson:"Actors"`
 	Cast            []string  `json:"cast" bson:"Cast"`
-	Director        string    `json:"director" bson:"Director"`
 	Directors       []string  `json:"directors" bson:"Directors"`
 	Ratings         []rating  `json:"ratings" bson:"Ratings"`
 	BoxOffice       string    `json:"boxoffice" bson:"BoxOffice"`
