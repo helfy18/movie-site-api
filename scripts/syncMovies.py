@@ -312,16 +312,12 @@ def needs_omdb(row, release_date, year, refresh=False):
 
 def enrich(rows, new_only=False, refresh_omdb=False):
     """Same logic as movieScript.py. Mutates rows in place. Returns False if OMDB quota ran out."""
-    apikey = config.apikey
+    omdb_keys = list(dict.fromkeys([config.apikey, config.apikey2, config.apikey3]))
+    omdb_key_index = 0
     currentTime = round(time.time() * 1000)
     omdb_calls = omdb_skipped = 0
 
     for index, row in enumerate(rows):
-        if index == 949:
-            apikey = config.apikey2
-        if index == 1900:
-            apikey = config.apikey3
-
         if new_only and row['TMDBId']:
             continue
 
@@ -403,14 +399,22 @@ def enrich(rows, new_only=False, refresh_omdb=False):
             print(title, year, index, '(OMDB skipped: older than 2 years and already filled)')
             continue
         omdb_calls += 1
-        omdb = requests.get(f'http://www.omdbapi.com/?apikey={apikey}&i={imdbid}&type=movie').json()
+        omdb = {}
+        while omdb_key_index < len(omdb_keys):
+            omdb = requests.get(f'http://www.omdbapi.com/?apikey={omdb_keys[omdb_key_index]}&i={imdbid}&type=movie').json()
+            if omdb.get("Response") == "False" and 'limit' in omdb.get("Error", "").lower():
+                omdb_key_index += 1
+                if omdb_key_index < len(omdb_keys):
+                    print(f'OMDB key hit its daily limit, switching to key {omdb_key_index + 1} of {len(omdb_keys)}')
+                continue
+            break
+        if omdb_key_index >= len(omdb_keys):
+            print('All OMDB keys hit their daily limit, stopping so progress is saved. Re-run later to finish.')
+            print(f'OMDB calls made: {omdb_calls}, skipped by staleness rule: {omdb_skipped}')
+            return False
         if omdb.get("Response") == "False" or "Ratings" not in omdb:
             error = omdb.get("Error", "unknown error")
             print(f'OMDB FAILED: {error}, {title}, {year}, {index}')
-            if 'limit' in error.lower():
-                print('OMDB daily request limit reached, stopping so progress is saved. Re-run later to finish.')
-                print(f'OMDB calls made: {omdb_calls}, skipped by staleness rule: {omdb_skipped}')
-                return False
         else:
             ratings = omdb["Ratings"]
             row['RottenTomatoes'] = get_rating(ratings, 'Rotten Tomatoes')

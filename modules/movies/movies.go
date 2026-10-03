@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
@@ -22,7 +24,15 @@ every request.
 */
 type Handler struct {
 	collection *mongo.Collection
+
+	// ListTypes result cache; the underlying data only changes when the
+	// sync script runs, so recomputing its nine queries per request is waste.
+	typesMu       sync.Mutex
+	typesCache    bson.M
+	typesCachedAt time.Time
 }
+
+const typesCacheTTL = 10 * time.Minute
 
 func NewHandler(collection *mongo.Collection) *Handler {
 	return &Handler{collection: collection}
@@ -335,6 +345,14 @@ func (h *Handler) GetRandomMovie(c *gin.Context) {
 }
 
 func (h *Handler) ListTypes(c *gin.Context) {
+	h.typesMu.Lock()
+	if h.typesCache != nil && time.Since(h.typesCachedAt) < typesCacheTTL {
+		cached := h.typesCache
+		h.typesMu.Unlock()
+		c.JSON(http.StatusOK, cached)
+		return
+	}
+	h.typesMu.Unlock()
 
 	// Aggregation universePipeline for universes and sub-universes
 	universePipeline := bson.A{
@@ -550,7 +568,7 @@ func (h *Handler) ListTypes(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, bson.M{
+	result := bson.M{
 		"provider":  providers,
 		"genre":     genres,
 		"year":      years,
@@ -560,7 +578,14 @@ func (h *Handler) ListTypes(c *gin.Context) {
 		"director":  directors,
 		"universes": universes,
 		"runtime":   runtimes,
-	})
+	}
+
+	h.typesMu.Lock()
+	h.typesCache = result
+	h.typesCachedAt = time.Now()
+	h.typesMu.Unlock()
+
+	c.JSON(http.StatusOK, result)
 }
 
 func (h *Handler) GetMovieCount(c *gin.Context) {

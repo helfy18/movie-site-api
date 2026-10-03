@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
@@ -230,6 +231,31 @@ func TestGetRandomMovieValidation(t *testing.T) {
 	c, w := newTestContext("rating=high")
 	h.GetRandomMovie(c)
 	assertSingleErrorResponse(t, w, "rating must have two values for range, start and stop")
+}
+
+/*
+A fresh cache must be served without touching the database: the handler here
+has a nil collection, so any DB access would panic.
+*/
+func TestListTypesServesCache(t *testing.T) {
+	cached := NewHandler(nil)
+	cached.typesCache = bson.M{"genre": []string{"Action"}}
+	cached.typesCachedAt = time.Now()
+
+	c, w := newTestContext("")
+	cached.ListTypes(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var got map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("response not JSON: %v", err)
+	}
+	genres, isList := got["genre"].([]any)
+	if !isList || len(genres) != 1 || genres[0] != "Action" {
+		t.Errorf("cached payload not served: %v", got)
+	}
 }
 
 func TestGetMostRecentValidation(t *testing.T) {
