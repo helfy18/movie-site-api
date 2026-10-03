@@ -61,13 +61,16 @@ func TestParseDecade(t *testing.T) {
 }
 
 func TestBuildFilterQueryEmpty(t *testing.T) {
-	c, _ := newTestContext("")
-	query, ok := buildFilterQuery(c)
-	if !ok {
-		t.Fatal("expected ok for empty query")
-	}
-	if !reflect.DeepEqual(query, bson.M{}) {
-		t.Errorf("expected empty filter, got %v", query)
+	// free=false must not filter, same as omitting it
+	for _, q := range []string{"", "free=false"} {
+		c, _ := newTestContext(q)
+		query, ok := buildFilterQuery(c)
+		if !ok {
+			t.Fatalf("expected ok for query %q", q)
+		}
+		if !reflect.DeepEqual(query, bson.M{}) {
+			t.Errorf("query %q: expected empty filter, got %v", q, query)
+		}
 	}
 }
 
@@ -118,6 +121,14 @@ func TestBuildFilterQueryConditions(t *testing.T) {
 			query: "director=Brad+Bird",
 			want:  bson.M{"Director": bson.M{"$in": []string{"Brad Bird"}}},
 		},
+		{
+			name:  "free matches non-empty free or ads sections",
+			query: "free=true",
+			want: bson.M{"$or": []bson.M{
+				{"Provider.free.0": bson.M{"$exists": true}},
+				{"Provider.ads.0": bson.M{"$exists": true}},
+			}},
+		},
 	}
 
 	for _, tt := range tests {
@@ -150,6 +161,7 @@ func TestBuildFilterQueryInvalidInput(t *testing.T) {
 		{"non-integer runtime", "runtime=abc&runtime=100"},
 		{"rating with three values", "rating=1&rating=2&rating=3"},
 		{"non-integer provider", "provider=netflix"},
+		{"non-boolean free", "free=yes"},
 	}
 
 	for _, tt := range tests {
