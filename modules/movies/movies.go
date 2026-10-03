@@ -2,6 +2,7 @@ package movies
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"sort"
@@ -190,7 +191,8 @@ func GetMovie(c *gin.Context) {
 	if tmdbid != "" {
 		TMDBId, err := strconv.Atoi(tmdbid)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "year must be an integer"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "tmdbid must be an integer"})
+			return
 		}
 		query["TMDBId"] = TMDBId
 	} else {
@@ -203,6 +205,7 @@ func GetMovie(c *gin.Context) {
 		Year, err := strconv.Atoi(year)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "year must be an integer"})
+			return
 		}
 		query["Movie"] = title
 		query["Year"] = Year
@@ -214,6 +217,10 @@ func GetMovie(c *gin.Context) {
 	var movie movie
 	err := collection.FindOne(context.TODO(), query).Decode(&movie)
 	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "No movie found matching the criteria"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch movies"})
 		return
 	}
@@ -231,6 +238,7 @@ func GetMovieById(c *gin.Context) {
 		TMDBid, err := convertStringsToInts(tmdbid)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "tmdbid must be integer"})
+			return
 		}
 		query["TMDBId"] = bson.M{"$in": TMDBid}
 	} else {

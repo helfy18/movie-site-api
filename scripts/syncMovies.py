@@ -26,6 +26,7 @@ Install once:
     pip3 install -r requirements.txt
 """
 import argparse, csv, json, os, sys, time
+from datetime import datetime
 import requests
 
 
@@ -302,10 +303,10 @@ def needs_omdb(row, release_date, year, refresh=False):
     if refresh or not has_omdb_data(row):
         return True
     try:
-        released = time.strptime(release_date, '%Y-%m-%d')
+        released = datetime.strptime(release_date, '%Y-%m-%d')
     except (TypeError, ValueError):
-        released = time.strptime(f'{year}-01-01', '%Y-%m-%d')
-    age_days = (time.time() - time.mktime(released)) / 86400
+        released = datetime(year, 1, 1)
+    age_days = (datetime.now() - released).days
     return age_days <= OMDB_STALE_DAYS
 
 
@@ -328,9 +329,10 @@ def enrich(rows, new_only=False, refresh_omdb=False):
         year = int(row['Year'])
 
         if not row['TMDBId']:
-            url = f'https://api.themoviedb.org/3/search/movie?api_key={config.tmdbkey}&query={title}&year={year}'
-            search = requests.get(url).json()
-            print(url)
+            url = 'https://api.themoviedb.org/3/search/movie'
+            params = {'api_key': config.tmdbkey, 'query': title, 'year': year}
+            search = requests.get(url, params=params).json()
+            print(f'{url}?query={title}&year={year}')
             path = search['results'][0]['poster_path']
             tmdbcode = int(search["results"][0]["id"])
             row['Poster'] = f'https://image.tmdb.org/t/p/w500{path}'
@@ -368,9 +370,9 @@ def enrich(rows, new_only=False, refresh_omdb=False):
             row['Provider'] = "{}"
 
         recoUrl = f'{tmdb_url}/recommendations?api_key={config.tmdbkey}'
-        recommendations = requests.get(recoUrl).json()
         for i in range(0, MAX_RETRIES):
             try:
+                recommendations = requests.get(recoUrl).json()
                 row['Recommendations'] = str([item['id'] for item in recommendations['results']])
                 break
             except Exception:

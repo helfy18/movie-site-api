@@ -54,8 +54,17 @@ func main() {
 		c.Next()
 	})
 
+	var allowOrigins []string
+	for _, key := range []string{"SITEURL", "LOCALURL"} {
+		if origin := os.Getenv(key); origin != "" {
+			allowOrigins = append(allowOrigins, origin)
+		}
+	}
+	if len(allowOrigins) == 0 {
+		log.Fatal("SITEURL and LOCALURL environment variables not set; at least one allowed origin is required")
+	}
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{os.Getenv("SITEURL"), os.Getenv(("LOCALURL"))}
+	config.AllowOrigins = allowOrigins
 	router.Use(cors.New(config))
 
 	// Define routes
