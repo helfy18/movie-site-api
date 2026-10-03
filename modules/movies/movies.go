@@ -3,6 +3,7 @@ package movies
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"sort"
 	"strconv"
@@ -190,11 +191,12 @@ func (h *Handler) ListMovies(c *gin.Context) {
 
 	movies := make([]movie, 0)
 	if err := cursor.All(c.Request.Context(), &movies); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode movies " + err.Error()})
+		log.Printf("failed to decode movies: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode movies"})
 		return
 	}
 
-	c.IndentedJSON(http.StatusOK, movies)
+	c.JSON(http.StatusOK, movies)
 }
 
 // parseDecade parses a decade in the format "yyyy-yyyy" and returns a slice of individual years.
@@ -259,7 +261,7 @@ func (h *Handler) GetMovie(c *gin.Context) {
 		return
 	}
 
-	c.IndentedJSON(http.StatusOK, movie)
+	c.JSON(http.StatusOK, movie)
 }
 
 /*
@@ -288,11 +290,12 @@ func (h *Handler) GetMovieById(c *gin.Context) {
 	movies := make([]movie, 0)
 
 	if err := cursor.All(c.Request.Context(), &movies); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode movies " + err.Error()})
+		log.Printf("failed to decode movies: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode movies"})
 		return
 	}
 
-	c.IndentedJSON(http.StatusOK, movies)
+	c.JSON(http.StatusOK, movies)
 }
 
 /*
@@ -318,7 +321,8 @@ func (h *Handler) GetRandomMovie(c *gin.Context) {
 	}
 	var movies []movie
 	if err := cursor.All(c.Request.Context(), &movies); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode movie " + err.Error()})
+		log.Printf("failed to decode movie: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode movie"})
 		return
 	}
 
@@ -327,7 +331,7 @@ func (h *Handler) GetRandomMovie(c *gin.Context) {
 		return
 	}
 
-	c.IndentedJSON(http.StatusOK, movies[0])
+	c.JSON(http.StatusOK, movies[0])
 }
 
 func (h *Handler) ListTypes(c *gin.Context) {
@@ -546,7 +550,7 @@ func (h *Handler) ListTypes(c *gin.Context) {
 		return
 	}
 
-	c.IndentedJSON(http.StatusOK, bson.M{
+	c.JSON(http.StatusOK, bson.M{
 		"provider":  providers,
 		"genre":     genres,
 		"year":      years,
@@ -595,9 +599,10 @@ func (h *Handler) GetMostRecent(c *gin.Context) {
 	movies := make([]movie, 0)
 
 	if err := cursor.All(c.Request.Context(), &movies); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode movies " + err.Error()})
+		log.Printf("failed to decode movies: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode movies"})
 		return
 	}
 
-	c.IndentedJSON(http.StatusOK, movies)
+	c.JSON(http.StatusOK, movies)
 }

@@ -13,14 +13,18 @@ RUN go mod download
 # Copy the source from the current directory to the working directory inside the container
 COPY . .
 
-# Build the Go app
-RUN go build -o main .
+# Build the Go app as a static binary so it runs on plain alpine
+RUN CGO_ENABLED=0 go build -o main .
 
 # Step 2: Run stage
 FROM alpine:latest
 
+# Run as an unprivileged user
+RUN adduser -D -H apiuser
+USER apiuser
+
 # Set the Current Working Directory inside the container
-WORKDIR /root/
+WORKDIR /app
 
 # Copy the Pre-built binary file from the build stage
 COPY --from=builder /app/main .

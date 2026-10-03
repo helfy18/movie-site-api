@@ -7,5 +7,5 @@ import (
 )
 
 func Login(c *gin.Context) {
-	c.IndentedJSON(http.StatusNotFound, gin.H{"error": "Route doesn't exist"})
+	c.JSON(http.StatusNotFound, gin.H{"error": "Route doesn't exist"})
 }
