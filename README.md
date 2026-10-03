@@ -18,7 +18,7 @@ This project is a RESTful API that connects to a MongoDB database to fetch and s
 
 ### Prerequisites
 
-- Go (version 1.22.3)
+- Go (version 1.26 or newer)
 - MongoDB instance
 - Gin framework
 
