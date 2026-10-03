@@ -85,7 +85,8 @@ Every movie endpoint returns the full movie object. For example, `GET /movies/ge
   "plot": "An example plot.",
   "poster": "http://example.com/poster.jpg",
   "actors": "John Doe, Jane Doe",
-  "director": "Director Name",
+  "director": "Director Name, Co-Director Name",
+  "directors": ["Director Name", "Co-Director Name"],
   "ratings": [
     { "source": "Internet Movie Database", "value": "8.5/10" },
     { "source": "Rotten Tomatoes", "value": "92%" },

@@ -117,9 +117,12 @@ func TestBuildFilterQueryConditions(t *testing.T) {
 			want:  bson.M{"Provider.flatrate.provider_id": bson.M{"$in": []int{8}}},
 		},
 		{
-			name:  "director",
+			name:  "director matches array and legacy string",
 			query: "director=Brad+Bird",
-			want:  bson.M{"Director": bson.M{"$in": []string{"Brad Bird"}}},
+			want: bson.M{"$or": []bson.M{
+				{"Directors": bson.M{"$in": []string{"Brad Bird"}}},
+				{"Director": bson.M{"$in": []string{"Brad Bird"}}},
+			}},
 		},
 		{
 			name:  "free matches non-empty free or ads sections",

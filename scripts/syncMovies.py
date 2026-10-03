@@ -82,6 +82,7 @@ CAST = {
     'Ratings': json.loads,          # '[{"Source": ...}]'  -> list of dicts
     'Provider': json.loads,         # '{"link": ...}'      -> dict
     'Recommendations': json.loads,  # '[581997, 141052]'   -> list of ints
+    'Directors': json.loads,        # '["Joel Coen", "Ethan Coen"]' -> list of names
 }
 SKIP_EMPTY = True   # Compass omitted empty cells from documents; keep that behavior
 MONGO_KEY = 'TMDBId'
@@ -428,6 +429,16 @@ def enrich(rows, new_only=False, refresh_omdb=False):
     return True
 
 
+def derive_directors(fieldnames, rows):
+    """Directors (JSON array) is always derived from the Director string, so
+    the two columns can never drift apart. Adds the column if missing."""
+    if 'Directors' not in fieldnames:
+        fieldnames.insert(fieldnames.index('Director') + 1, 'Directors')
+    for row in rows:
+        names = [n.strip() for n in row.get('Director', '').split(',') if n.strip()]
+        row['Directors'] = json.dumps(names) if names else ''
+
+
 # ----------------------------------- CSV -----------------------------------
 def write_csv(fieldnames, rows, path):
     with open(path, 'w', newline='', encoding='utf-8') as f:
@@ -465,8 +476,8 @@ def main():
             enrich(rows, new_only=args.new_only, refresh_omdb=args.refresh_omdb)
     finally:
         # always persist whatever progress was made, even if a row crashed
-        if not args.skip_enrich:
-            write_sheet(ws, fieldnames, rows)
+        derive_directors(fieldnames, rows)
+        write_sheet(ws, fieldnames, rows)
         write_mongo(open_collection(), rows)
 
 
