@@ -83,6 +83,7 @@ CAST = {
     'Provider': json.loads,         # '{"link": ...}'      -> dict
     'Recommendations': json.loads,  # '[581997, 141052]'   -> list of ints
     'Directors': json.loads,        # '["Joel Coen", "Ethan Coen"]' -> list of names
+    'Cast': json.loads,             # '["Tom Hanks", "Tim Allen"]'  -> list of names
 }
 SKIP_EMPTY = True   # Compass omitted empty cells from documents; keep that behavior
 MONGO_KEY = 'TMDBId'
@@ -429,14 +430,18 @@ def enrich(rows, new_only=False, refresh_omdb=False):
     return True
 
 
-def derive_directors(fieldnames, rows):
-    """Directors (JSON array) is always derived from the Director string, so
-    the two columns can never drift apart. Adds the column if missing."""
-    if 'Directors' not in fieldnames:
-        fieldnames.insert(fieldnames.index('Director') + 1, 'Directors')
-    for row in rows:
-        names = [n.strip() for n in row.get('Director', '').split(',') if n.strip()]
-        row['Directors'] = json.dumps(names) if names else ''
+def derive_name_lists(fieldnames, rows):
+    """Directors/Cast (JSON arrays) are always derived from the Director/Actors
+    strings, so the columns can never drift apart. Adds the columns if missing."""
+    for src, dst in (('Director', 'Directors'), ('Actors', 'Cast')):
+        if dst not in fieldnames:
+            fieldnames.insert(fieldnames.index(src) + 1, dst)
+        for row in rows:
+            value = row.get(src, '')
+            if value.strip().upper() == 'N/A':
+                value = ''
+            names = [n.strip() for n in value.split(',') if n.strip()]
+            row[dst] = json.dumps(names) if names else ''
 
 
 # ----------------------------------- CSV -----------------------------------
@@ -476,7 +481,7 @@ def main():
             enrich(rows, new_only=args.new_only, refresh_omdb=args.refresh_omdb)
     finally:
         # always persist whatever progress was made, even if a row crashed
-        derive_directors(fieldnames, rows)
+        derive_name_lists(fieldnames, rows)
         write_sheet(ws, fieldnames, rows)
         write_mongo(open_collection(), rows)
 

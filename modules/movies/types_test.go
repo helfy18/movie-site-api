@@ -14,7 +14,7 @@ import (
 var frontendMovieFields = []string{
 	"movie", "jh_score", "universe", "sub_universe", "genre", "genre_2",
 	"holiday", "exclusive", "studio", "year", "review", "ranking",
-	"dani_approved", "plot", "poster", "actors", "director", "directors", "ratings",
+	"dani_approved", "plot", "poster", "actors", "cast", "director", "directors", "ratings",
 	"boxoffice", "rated", "runtime", "provider", "budget", "tmdbid",
 	"recommendations", "rottentomatoes", "imdb", "metacritic", "trailer",
 	"origin_country", "ms_added",
@@ -39,6 +39,7 @@ var dbDocument = bson.M{
 	"Plot":          "Toys come alive.",
 	"Poster":        "https://image.tmdb.org/t/p/w500/uXDfjJbdP4ijW5hWSBrPrlKpxab.jpg",
 	"Actors":        "Tom Hanks, Tim Allen",
+	"Cast":          bson.A{"Tom Hanks", "Tim Allen"},
 	"Director":      "John Lasseter",
 	"Directors":     bson.A{"John Lasseter"},
 	"Ratings": bson.A{
@@ -129,6 +130,9 @@ func TestMovieDecodesFromDBDocument(t *testing.T) {
 	}
 	if !reflect.DeepEqual(m.Directors, []string{"John Lasseter"}) {
 		t.Errorf("Directors = %v, want [John Lasseter]", m.Directors)
+	}
+	if !reflect.DeepEqual(m.Cast, []string{"Tom Hanks", "Tim Allen"}) {
+		t.Errorf("Cast = %v, want [Tom Hanks Tim Allen]", m.Cast)
 	}
 	if !m.Dani_Approved {
 		t.Error("Dani_Approved = false, want true")

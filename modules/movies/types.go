@@ -50,6 +50,7 @@ type movie struct {
 	Plot            string    `json:"plot" bson:"Plot"`
 	Poster          string    `json:"poster" bson:"Poster"`
 	Actors          string    `json:"actors" bson:"Actors"`
+	Cast            []string  `json:"cast" bson:"Cast"`
 	Director        string    `json:"director" bson:"Director"`
 	Directors       []string  `json:"directors" bson:"Directors"`
 	Ratings         []rating  `json:"ratings" bson:"Ratings"`
