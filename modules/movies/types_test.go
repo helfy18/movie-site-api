@@ -55,8 +55,6 @@ var dbDocument = bson.M{
 		"rent": bson.A{
 			bson.M{"logo_path": "/y.jpg", "provider_id": int32(2), "provider_name": "Apple TV", "display_priority": int32(4)},
 		},
-		// real documents may also carry "ads" and "free" sections, which the
-		// API does not expose; decoding must not fail on them
 		"ads": bson.A{
 			bson.M{"logo_path": "/z.jpg", "provider_id": int32(538), "provider_name": "Plex", "display_priority": int32(20)},
 		},
@@ -119,6 +117,12 @@ func TestMovieDecodesFromDBDocument(t *testing.T) {
 	if len(m.Provider.Rent) != 1 || m.Provider.Rent[0].Provider_id != 2 {
 		t.Errorf("Provider.Rent decoded wrong: %+v", m.Provider.Rent)
 	}
+	if len(m.Provider.Ads) != 1 || m.Provider.Ads[0].Provider_name != "Plex" {
+		t.Errorf("Provider.Ads decoded wrong: %+v", m.Provider.Ads)
+	}
+	if len(m.Provider.Free) != 1 || m.Provider.Free[0].Provider_name != "Pluto TV" {
+		t.Errorf("Provider.Free decoded wrong: %+v", m.Provider.Free)
+	}
 	if !reflect.DeepEqual(m.Recommendations, []int32{863, 10193}) {
 		t.Errorf("Recommendations = %v, want [863 10193]", m.Recommendations)
 	}
@@ -161,14 +165,54 @@ func TestMovieJSONMatchesFrontendContract(t *testing.T) {
 		t.Errorf("ratings JSON shape wrong: %v", first)
 	}
 	provider := got["provider"].(map[string]any)
-	flatrate := provider["flatrate"].([]any)[0].(map[string]any)
-	for _, key := range []string{"logo_path", "provider_id", "provider_name", "display_priority"} {
-		if _, exists := flatrate[key]; !exists {
-			t.Errorf("provider flatrate entry missing %q: %v", key, flatrate)
+	for _, section := range []string{"flatrate", "ads", "free"} {
+		entry := provider[section].([]any)[0].(map[string]any)
+		for _, key := range []string{"logo_path", "provider_id", "provider_name", "display_priority"} {
+			if _, exists := entry[key]; !exists {
+				t.Errorf("provider %s entry missing %q: %v", section, key, entry)
+			}
 		}
 	}
 	if provider["link"] == "" {
 		t.Error("provider link missing")
+	}
+}
+
+/*
+The frontend types ads and free as `ProviderInfo[] | null`: a movie without
+those tiers must serialize them as null, not omit the keys.
+*/
+func TestProviderAdsFreeNullWhenAbsent(t *testing.T) {
+	raw, err := bson.Marshal(bson.M{
+		"Movie": "No Free Tier",
+		"Provider": bson.M{
+			"link":     "https://example.com",
+			"flatrate": bson.A{},
+		},
+	})
+	if err != nil {
+		t.Fatalf("bson.Marshal: %v", err)
+	}
+	var m movie
+	if err := bson.Unmarshal(raw, &m); err != nil {
+		t.Fatalf("bson.Unmarshal: %v", err)
+	}
+	out, err := json.Marshal(m)
+	if err != nil {
+		t.Fatalf("json.Marshal: %v", err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal(out, &got); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+	provider := got["provider"].(map[string]any)
+	for _, section := range []string{"ads", "free"} {
+		v, exists := provider[section]
+		if !exists {
+			t.Errorf("provider.%s key missing; frontend expects it present (null allowed)", section)
+		} else if v != nil {
+			t.Errorf("provider.%s = %v, want null when absent in DB", section, v)
+		}
 	}
 }
 

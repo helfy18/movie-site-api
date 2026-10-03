@@ -18,6 +18,8 @@ type providers struct {
 	Rent     []providerInfo `json:"rent" bson:"rent"`
 	Flatrate []providerInfo `json:"flatrate" bson:"flatrate"`
 	Buy      []providerInfo `json:"buy" bson:"buy"`
+	Ads      []providerInfo `json:"ads" bson:"ads"`
+	Free     []providerInfo `json:"free" bson:"free"`
 }
 
 // Ratings from other sites

@@ -104,6 +104,12 @@ Every movie endpoint returns the full movie object. For example, `GET /movies/ge
     ],
     "buy": [
       { "logo_path": "/example.jpg", "provider_id": 10, "provider_name": "Amazon Video", "display_priority": 3 }
+    ],
+    "ads": [
+      { "logo_path": "/example.jpg", "provider_id": 538, "provider_name": "Plex", "display_priority": 20 }
+    ],
+    "free": [
+      { "logo_path": "/example.jpg", "provider_id": 300, "provider_name": "Pluto TV", "display_priority": 25 }
     ]
   },
   "budget": "$100,000,000",
