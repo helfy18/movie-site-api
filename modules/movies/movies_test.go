@@ -122,6 +122,11 @@ func TestBuildFilterQueryConditions(t *testing.T) {
 			want:  bson.M{"Directors": bson.M{"$in": []string{"Brad Bird"}}},
 		},
 		{
+			name:  "actor matches cast array elements",
+			query: "actor=Tom+Hanks&actor=Meg+Ryan",
+			want:  bson.M{"Cast": bson.M{"$in": []string{"Tom Hanks", "Meg Ryan"}}},
+		},
+		{
 			name:  "free matches non-empty free or ads sections",
 			query: "free=true",
 			want: bson.M{"$or": []bson.M{
