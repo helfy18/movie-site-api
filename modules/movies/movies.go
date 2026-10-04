@@ -59,7 +59,7 @@ func convertStringsToInts(strs []string) ([]int, error) {
 
 /*
 Builds a MongoDB filter from the optional query parameters genre, universe,
-exclusive, studio, holiday, year, decade, director, runtime (range),
+exclusive, studio, holiday, year, decade, director, actor, runtime (range),
 rating (range), provider and free (true matches movies with a free or
 free-with-ads provider). Writes a 400 response and returns false when a
 parameter is invalid.
@@ -133,6 +133,11 @@ func buildFilterQuery(c *gin.Context) (bson.M, bool) {
 		conditions = append(conditions, bson.M{"Directors": bson.M{"$in": director}})
 	}
 
+	actor := c.QueryArray("actor")
+	if len(actor) > 0 {
+		conditions = append(conditions, bson.M{"Cast": bson.M{"$in": actor}})
+	}
+
 	runtime := c.QueryArray("runtime")
 	if len(runtime) > 0 {
 		if len(runtime) != 2 {
@@ -197,7 +202,8 @@ func buildFilterQuery(c *gin.Context) (bson.M, bool) {
 
 /*
 Accepts optional parameters genre, universe, exclusive, studio, holiday,
-year, decade, director, runtime (range), rating (range), provider and free.
+year, decade, director, actor, runtime (range), rating (range), provider
+and free.
 Returns list of movies matching the description.
 */
 func (h *Handler) ListMovies(c *gin.Context) {
