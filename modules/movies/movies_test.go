@@ -244,6 +244,54 @@ func TestListMoviesValidation(t *testing.T) {
 	assertSingleErrorResponse(t, w, "year must be integer")
 }
 
+func TestInvalidViewRejected(t *testing.T) {
+	handlers := map[string]gin.HandlerFunc{
+		"ListMovies":     h.ListMovies,
+		"GetRandomMovie": h.GetRandomMovie,
+		"GetMostRecent":  h.GetMostRecent,
+	}
+	for name, handler := range handlers {
+		t.Run(name, func(t *testing.T) {
+			c, w := newTestContext("view=poster")
+			handler(c)
+			assertSingleErrorResponse(t, w, "view must be compact or full")
+		})
+	}
+}
+
+func TestParseViewProjection(t *testing.T) {
+	for _, q := range []string{"", "view=full"} {
+		c, _ := newTestContext(q)
+		projection, ok := parseViewProjection(c)
+		if !ok || projection != nil {
+			t.Errorf("query %q: expected nil projection and ok, got %v, %v", q, projection, ok)
+		}
+	}
+
+	c, _ := newTestContext("view=compact")
+	projection, ok := parseViewProjection(c)
+	if !ok || !reflect.DeepEqual(projection, compactProjection) {
+		t.Errorf("view=compact: expected compactProjection, got %v, %v", projection, ok)
+	}
+}
+
+/*
+Every compactProjection key must be a real bson field on the movie struct;
+a tag rename would otherwise silently drop the field from compact responses
+instead of failing a query.
+*/
+func TestCompactProjectionMatchesMovieFields(t *testing.T) {
+	bsonTags := make(map[string]bool)
+	for field := range reflect.TypeFor[movie]().Fields() {
+		bsonTags[field.Tag.Get("bson")] = true
+	}
+	for key := range compactProjection {
+		if !bsonTags[key] {
+			t.Errorf("compactProjection key %q is not a bson tag on movie", key)
+		}
+	}
+}
+
 func TestGetRandomMovieValidation(t *testing.T) {
 	c, w := newTestContext("rating=high")
 	h.GetRandomMovie(c)

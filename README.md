@@ -54,18 +54,18 @@ The server will start, and you'll be able to access the API at http://localhost:
 
 | Method | Path                | Description                                                        |
 | ------ | ------------------- | ------------------------------------------------------------------ |
-| GET    | `/movies/list`      | List movies (filterable by genre, universe, year, runtime, etc.)   |
+| GET    | `/movies/list`      | List movies (filterable by genre, universe, year, runtime, etc.; `view=compact` trims each movie to the fields the grid needs) |
 | GET    | `/movies/get`       | Get one movie by `tmdbid`, or by `title` and `year`                |
 | GET    | `/movies/list/id`   | Get movies for one or more `tmdbid` values                         |
-| GET    | `/movies/random`    | Get a random movie matching the same filters as `/movies/list`     |
-| GET    | `/movies/mostRecent`| Get the most recently added movies (`count`, default 20)           |
+| GET    | `/movies/random`    | Get a random movie matching the same filters as `/movies/list` (supports `view=compact`) |
+| GET    | `/movies/mostRecent`| Get the most recently added movies (`count`, default 20; supports `view=compact`) |
 | GET    | `/movies/count`     | Get the total number of movies                                     |
 | GET    | `/types/list`       | Get distinct universes, genres, years, providers, studios, etc.    |
 | POST   | `/auth/login`       | Log in                                                             |
 
 ### Example Response
 
-Every movie endpoint returns the full movie object. For example, `GET /movies/get?tmdbid=123456`:
+Every movie endpoint returns the full movie object by default. For example, `GET /movies/get?tmdbid=123456`:
 
 ```json
 {

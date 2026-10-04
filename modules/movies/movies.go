@@ -201,9 +201,48 @@ func buildFilterQuery(c *gin.Context) (bson.M, bool) {
 }
 
 /*
+compactProjection backs view=compact: the fields the frontend grid renders
+(poster tiles) plus the ones its client-side text search matches on. The
+omitted fields (Provider, Plot, Review, Ratings, Recommendations, ...) hold
+nearly all the bytes and still appear in the JSON as zero values, so the
+response shape is unchanged.
+*/
+var compactProjection = bson.M{
+	"Movie":         1,
+	"JH_Score":      1,
+	"Poster":        1,
+	"TMDBId":        1,
+	"Dani_Approved": 1,
+	"Cast":          1,
+	"Directors":     1,
+	"Universe":      1,
+	"Sub_Universe":  1,
+	"Studio":        1,
+	"Year":          1,
+}
+
+/*
+parseViewProjection reads the optional view parameter shared by the list
+endpoints. Full (the default) returns a nil projection; compact returns
+compactProjection. Writes a 400 response and returns false for anything else.
+*/
+func parseViewProjection(c *gin.Context) (bson.M, bool) {
+	switch c.Query("view") {
+	case "", "full":
+		return nil, true
+	case "compact":
+		return compactProjection, true
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "view must be compact or full"})
+		return nil, false
+	}
+}
+
+/*
 Accepts optional parameters genre, universe, exclusive, studio, holiday,
-year, decade, director, actor, runtime (range), rating (range), provider
-and free.
+year, decade, director, actor, runtime (range), rating (range), provider,
+free and view (full is the default; compact returns only the fields the
+movie grid needs, leaving the rest as zero values).
 Returns list of movies matching the description.
 */
 func (h *Handler) ListMovies(c *gin.Context) {
@@ -212,8 +251,15 @@ func (h *Handler) ListMovies(c *gin.Context) {
 		return
 	}
 
+	projection, ok := parseViewProjection(c)
+	if !ok {
+		return
+	}
 
 	findOptions := options.Find().SetSort(bson.D{{Key: "Ranking", Value: 1}})
+	if projection != nil {
+		findOptions.SetProjection(projection)
+	}
 
 	cursor, err := h.collection.Find(c.Request.Context(), query, findOptions)
 	if err != nil {
@@ -331,7 +377,7 @@ func (h *Handler) GetMovieById(c *gin.Context) {
 }
 
 /*
-Accepts the same optional filter parameters as ListMovies.
+Accepts the same optional filter and view parameters as ListMovies.
 Returns one random movie matching the description.
 */
 func (h *Handler) GetRandomMovie(c *gin.Context) {
@@ -340,9 +386,17 @@ func (h *Handler) GetRandomMovie(c *gin.Context) {
 		return
 	}
 
+	projection, ok := parseViewProjection(c)
+	if !ok {
+		return
+	}
+
 	pipeline := bson.A{
 		bson.M{"$match": query},
 		bson.M{"$sample": bson.M{"size": 1}},
+	}
+	if projection != nil {
+		pipeline = append(pipeline, bson.M{"$project": projection})
 	}
 
 
@@ -638,10 +692,17 @@ func (h *Handler) GetMostRecent(c *gin.Context) {
 		limit = min(parsed, maxLimit)
 	}
 
+	projection, ok := parseViewProjection(c)
+	if !ok {
+		return
+	}
 
 	opts := options.Find()
 	opts.SetSort(bson.M{"ms_added": -1})
 	opts.SetLimit(limit)
+	if projection != nil {
+		opts.SetProjection(projection)
+	}
 
 	cursor, err := h.collection.Find(c.Request.Context(), bson.M{}, opts)
 	if err != nil {
