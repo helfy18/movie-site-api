@@ -9,6 +9,7 @@ Run from anywhere:
     python3 scripts/syncMovies.py --skip-enrich  # push the sheet to Mongo as-is (no API calls)
     python3 scripts/syncMovies.py --new-only     # enrich only rows with no TMDBId yet, then sync everything
     python3 scripts/syncMovies.py --refresh-omdb # full run, but re-fetch OMDB ratings even for old movies
+    python3 scripts/syncMovies.py --refresh-credits # full run, re-fetching TMDB credits (Cast/Directors) for every row
     python3 scripts/syncMovies.py --check        # test the Sheets and Mongo connections, read-only, then exit
     python3 scripts/syncMovies.py --backup       # dump the Mongo collection and the sheet to scripts/backups/, then exit
 
@@ -86,9 +87,10 @@ CAST = {
     'Cast': json.loads,             # '["Tom Hanks", "Tim Allen"]'  -> list of names
 }
 SKIP_EMPTY = True   # Compass omitted empty cells from documents; keep that behavior
-# Sheet-only columns: the human-readable strings stay in the sheet (and feed
-# the derived Directors/Cast arrays) but are not written to Mongo or the API.
-MONGO_SKIP = {'Director', 'Actors'}
+# Retired string columns, replaced by the Directors/Cast JSON arrays. Deleted
+# from the sheet on sight and never written to Mongo (in case they linger).
+RETIRED_COLUMNS = ('Director', 'Actors')
+MONGO_SKIP = set(RETIRED_COLUMNS)
 MONGO_KEY = 'TMDBId'
 BACKUP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backups')   # field used to match sheet rows to Mongo documents
 
@@ -317,7 +319,7 @@ def needs_omdb(row, release_date, year, refresh=False):
     return age_days <= OMDB_STALE_DAYS
 
 
-def enrich(rows, new_only=False, refresh_omdb=False):
+def enrich(rows, new_only=False, refresh_omdb=False, refresh_credits=False):
     """Same logic as movieScript.py. Mutates rows in place. Returns False if OMDB quota ran out."""
     omdb_keys = list(dict.fromkeys([config.apikey, config.apikey2, config.apikey3]))
     omdb_key_index = 0
@@ -346,12 +348,15 @@ def enrich(rows, new_only=False, refresh_omdb=False):
 
         tmdb_url = f'https://api.themoviedb.org/3/movie/{tmdbcode}'
 
-        if not row['Actors']:
+        # Cast/Directors go straight from the credits response into JSON arrays;
+        # never join-and-split on commas, names like "Robert Downey, Jr." break.
+        if refresh_credits or not row.get('Cast'):
             castAndCrew = requests.get(f'{tmdb_url}/credits?api_key={config.tmdbkey}').json()
-            actorString = ', '.join(actor["name"] for actor in castAndCrew["cast"])
-            print(title, actorString)
-            row['Actors'] = actorString if actorString else "N/A"
-            row['Director'] = ', '.join(c["name"] for c in castAndCrew["crew"] if c["job"] == "Director")
+            cast = [actor["name"] for actor in castAndCrew["cast"]]
+            directors = [c["name"] for c in castAndCrew["crew"] if c["job"] == "Director"]
+            print(title, ', '.join(cast))
+            row['Cast'] = json.dumps(cast)          # '[]' when TMDB has none, so it is not re-fetched every run
+            row['Directors'] = json.dumps(directors)
 
         movieInfo = requests.get(f'{tmdb_url}?api_key={config.tmdbkey}').json()
         boxofficeTotal = movieInfo.get('revenue', 'N/A')
@@ -435,18 +440,16 @@ def enrich(rows, new_only=False, refresh_omdb=False):
     return True
 
 
-def derive_name_lists(fieldnames, rows):
-    """Directors/Cast (JSON arrays) are always derived from the Director/Actors
-    strings, so the columns can never drift apart. Adds the columns if missing."""
-    for src, dst in (('Director', 'Directors'), ('Actors', 'Cast')):
-        if dst not in fieldnames:
-            fieldnames.insert(fieldnames.index(src) + 1, dst)
-        for row in rows:
-            value = row.get(src, '')
-            if value.strip().upper() == 'N/A':
-                value = ''
-            names = [n.strip() for n in value.split(',') if n.strip()]
-            row[dst] = json.dumps(names) if names else ''
+def drop_retired_columns(ws, fieldnames):
+    """Delete the old Director/Actors string columns from the sheet. The JSON
+    Directors/Cast arrays (filled straight from TMDB credits) replaced them.
+    One-time cleanup; a no-op once the columns are gone."""
+    retired = [c for c in RETIRED_COLUMNS if c in fieldnames]
+    for name in sorted(retired, key=fieldnames.index, reverse=True):
+        ws.delete_columns(fieldnames.index(name) + 1)
+        fieldnames.remove(name)
+    if retired:
+        print(f'Sheet: removed retired columns {retired}')
 
 
 # ----------------------------------- CSV -----------------------------------
@@ -464,6 +467,7 @@ def main():
     ap.add_argument('--skip-enrich', action='store_true', help='no TMDB/OMDB calls, just sheet -> Mongo')
     ap.add_argument('--new-only', action='store_true', help='enrich only rows with no TMDBId, then sync all')
     ap.add_argument('--refresh-omdb', action='store_true', help='ignore the staleness rule and re-fetch OMDB for every row')
+    ap.add_argument('--refresh-credits', action='store_true', help='re-fetch TMDB credits (Cast/Directors) for every row, not just empty ones')
     ap.add_argument('--check', action='store_true', help='test Sheets and Mongo connections read-only, then exit')
     ap.add_argument('--backup', action='store_true', help='dump Mongo collection + sheet to scripts/backups/, then exit')
     ap.add_argument('--restore', metavar='FILE', help='replace the Mongo collection with a backup JSON file')
@@ -480,13 +484,18 @@ def main():
     ws = open_worksheet()
     fieldnames, rows = read_sheet(ws)
     print(f'Read {len(rows)} rows from sheet "{config.worksheet_name}"')
+    drop_retired_columns(ws, fieldnames)
+    if 'Cast' not in fieldnames:
+        fieldnames.append('Cast')
+    if 'Directors' not in fieldnames:
+        fieldnames.append('Directors')
 
     try:
         if not args.skip_enrich:
-            enrich(rows, new_only=args.new_only, refresh_omdb=args.refresh_omdb)
+            enrich(rows, new_only=args.new_only, refresh_omdb=args.refresh_omdb,
+                   refresh_credits=args.refresh_credits)
     finally:
         # always persist whatever progress was made, even if a row crashed
-        derive_name_lists(fieldnames, rows)
         write_sheet(ws, fieldnames, rows)
         write_mongo(open_collection(), rows)
 
