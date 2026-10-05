@@ -134,6 +134,16 @@ func TestBuildFilterQueryConditions(t *testing.T) {
 				{"Provider.ads.0": bson.M{"$exists": true}},
 			}},
 		},
+		{
+			name:  "dani_approved true matches the flag directly",
+			query: "dani_approved=true",
+			want:  bson.M{"Dani_Approved": true},
+		},
+		{
+			name:  "dani_approved false also matches movies missing the flag",
+			query: "dani_approved=false",
+			want:  bson.M{"Dani_Approved": bson.M{"$ne": true}},
+		},
 	}
 
 	for _, tt := range tests {
@@ -167,6 +177,7 @@ func TestBuildFilterQueryInvalidInput(t *testing.T) {
 		{"rating with three values", "rating=1&rating=2&rating=3"},
 		{"non-integer provider", "provider=netflix"},
 		{"non-boolean free", "free=yes"},
+		{"non-boolean dani_approved", "dani_approved=yes"},
 	}
 
 	for _, tt := range tests {

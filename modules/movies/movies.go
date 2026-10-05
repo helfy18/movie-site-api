@@ -60,9 +60,9 @@ func convertStringsToInts(strs []string) ([]int, error) {
 /*
 Builds a MongoDB filter from the optional query parameters genre, universe,
 exclusive, studio, holiday, year, decade, director, actor, runtime (range),
-rating (range), provider and free (true matches movies with a free or
-free-with-ads provider). Writes a 400 response and returns false when a
-parameter is invalid.
+rating (range), provider, free (true matches movies with a free or
+free-with-ads provider) and dani_approved (boolean). Writes a 400 response
+and returns false when a parameter is invalid.
 */
 func buildFilterQuery(c *gin.Context) (bson.M, bool) {
 	var conditions []bson.M
@@ -190,6 +190,21 @@ func buildFilterQuery(c *gin.Context) (bson.M, bool) {
 				{"Provider.free.0": bson.M{"$exists": true}},
 				{"Provider.ads.0": bson.M{"$exists": true}},
 			}})
+		}
+	}
+
+	if dani := c.Query("dani_approved"); dani != "" {
+		wantDani, err := strconv.ParseBool(dani)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "dani_approved must be a boolean"})
+			return nil, false
+		}
+		// the sync script omits empty cells, so unapproved movies may lack the
+		// field entirely; $ne matches both false and missing
+		if wantDani {
+			conditions = append(conditions, bson.M{"Dani_Approved": true})
+		} else {
+			conditions = append(conditions, bson.M{"Dani_Approved": bson.M{"$ne": true}})
 		}
 	}
 
