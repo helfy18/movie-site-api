@@ -61,7 +61,16 @@ The server will start, and you'll be able to access the API at http://localhost:
 | GET    | `/movies/mostRecent`| Get the most recently added movies (`count`, default 20; supports `view=compact`) |
 | GET    | `/movies/count`     | Get the total number of movies                                     |
 | GET    | `/types/list`       | Get distinct universes, genres, years, providers, studios, etc.    |
-| POST   | `/auth/login`       | Log in                                                             |
+| GET    | `/reviews/list`     | List user reviews for a movie (`tmdbid`)                           |
+| PUT    | `/reviews`          | 🔒 Create or replace your review: `{tmdbid, score?, text?}` (POST works too) |
+| DELETE | `/reviews`          | 🔒 Delete your review for a movie (`tmdbid`)                        |
+
+🔒 endpoints require a Firebase ID token in the `Authorization: Bearer <token>` header.
+The frontend gets the token from the Firebase Auth SDK; the API verifies it against the
+project named by the `FIREBASE_PROJECT_ID` environment variable (no service-account key
+needed). Reviews are stored in their own collection (`MONGO_REVIEWS_COLLECTION`, default
+`reviews`), one per user per movie, with `score` on the same 0–100 scale as `JH_Score`.
+The movie sync script never touches this collection.
 
 ### Example Response
 
