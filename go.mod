@@ -6,6 +6,7 @@ require (
 	firebase.google.com/go/v4 v4.22.0
 	github.com/gin-gonic/gin v1.12.0
 	go.mongodb.org/mongo-driver v1.17.10
+	google.golang.org/api v0.279.0
 )
 
 require (
@@ -55,7 +56,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.45.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
-	google.golang.org/api v0.279.0 // indirect
 	google.golang.org/appengine/v2 v2.0.6 // indirect
 	google.golang.org/genproto v0.0.0-20260511170946-3700d4141b60 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect

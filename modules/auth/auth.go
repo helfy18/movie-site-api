@@ -8,6 +8,7 @@ import (
 	firebase "firebase.google.com/go/v4"
 	fbauth "firebase.google.com/go/v4/auth"
 	"github.com/gin-gonic/gin"
+	"google.golang.org/api/option"
 )
 
 // contextKey is where RequireAuth stores the verified token on the gin context.
@@ -17,9 +18,11 @@ const contextKey = "firebaseToken"
 NewVerifier returns a Firebase auth client for the given project. Verifying ID
 tokens only needs the project ID and Google's published public keys (which the
 SDK fetches and caches itself), so no service-account credentials are required.
+WithoutAuthentication stops the SDK from looking for application default
+credentials at startup; user-management calls would fail, but we never make any.
 */
 func NewVerifier(ctx context.Context, projectID string) (*fbauth.Client, error) {
-	app, err := firebase.NewApp(ctx, &firebase.Config{ProjectID: projectID})
+	app, err := firebase.NewApp(ctx, &firebase.Config{ProjectID: projectID}, option.WithoutAuthentication())
 	if err != nil {
 		return nil, err
 	}
