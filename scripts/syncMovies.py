@@ -298,6 +298,19 @@ def restore(path):
 
 
 # -------------------------------- Enrichment -------------------------------
+def get_json(url, **kwargs):
+    """requests.get(...).json() with retries. TMDB/OMDB occasionally reset the
+    connection mid-run; one dropped socket should not kill a 2000-row sync."""
+    for i in range(MAX_RETRIES):
+        try:
+            return requests.get(url, timeout=30, **kwargs).json()
+        except (requests.exceptions.RequestException, ValueError) as e:
+            if i == MAX_RETRIES - 1:
+                raise
+            print(f'  request failed ({type(e).__name__}), retry {i + 1}/{MAX_RETRIES - 1} in {WAIT_TIME}s: {url.split("?")[0]}')
+            time.sleep(WAIT_TIME)
+
+
 def get_rating(ratings, source):
     match = [r['Value'] for r in ratings if r['Source'] == source]
     return match[0] if match else 'N/A'
@@ -336,7 +349,7 @@ def enrich(rows, new_only=False, refresh_omdb=False, refresh_credits=False):
         if not row['TMDBId']:
             url = 'https://api.themoviedb.org/3/search/movie'
             params = {'api_key': config.tmdbkey, 'query': title, 'year': year}
-            search = requests.get(url, params=params).json()
+            search = get_json(url, params=params)
             print(f'{url}?query={title}&year={year}')
             path = search['results'][0]['poster_path']
             tmdbcode = int(search["results"][0]["id"])
@@ -351,14 +364,14 @@ def enrich(rows, new_only=False, refresh_omdb=False, refresh_credits=False):
         # Cast/Directors go straight from the credits response into JSON arrays;
         # never join-and-split on commas, names like "Robert Downey, Jr." break.
         if refresh_credits or not row.get('Cast'):
-            castAndCrew = requests.get(f'{tmdb_url}/credits?api_key={config.tmdbkey}').json()
+            castAndCrew = get_json(f'{tmdb_url}/credits?api_key={config.tmdbkey}')
             cast = [actor["name"] for actor in castAndCrew["cast"]]
             directors = [c["name"] for c in castAndCrew["crew"] if c["job"] == "Director"]
             print(title, ', '.join(cast))
             row['Cast'] = json.dumps(cast)          # '[]' when TMDB has none, so it is not re-fetched every run
             row['Directors'] = json.dumps(directors)
 
-        movieInfo = requests.get(f'{tmdb_url}?api_key={config.tmdbkey}').json()
+        movieInfo = get_json(f'{tmdb_url}?api_key={config.tmdbkey}')
         boxofficeTotal = movieInfo.get('revenue', 'N/A')
         try:
             country = movieInfo['origin_country'][0]
@@ -371,24 +384,16 @@ def enrich(rows, new_only=False, refresh_omdb=False, refresh_credits=False):
         row['Runtime'] = f"{movieInfo['runtime']:,}"
         row['origin_country'] = country
 
-        providers = requests.get(f'{tmdb_url}/watch/providers?api_key={config.tmdbkey}').json()
+        providers = get_json(f'{tmdb_url}/watch/providers?api_key={config.tmdbkey}')
         if providers['results'] and 'CA' in providers['results']:
             row['Provider'] = json.dumps(providers['results']['CA'])
         else:
             row['Provider'] = "{}"
 
-        recoUrl = f'{tmdb_url}/recommendations?api_key={config.tmdbkey}'
-        for i in range(0, MAX_RETRIES):
-            try:
-                recommendations = requests.get(recoUrl).json()
-                row['Recommendations'] = str([item['id'] for item in recommendations['results']])
-                break
-            except Exception:
-                print(f'FAILED {i}, {recoUrl}, {title}, {year}')
-                if i < MAX_RETRIES - 1:
-                    time.sleep(WAIT_TIME)
+        recommendations = get_json(f'{tmdb_url}/recommendations?api_key={config.tmdbkey}')
+        row['Recommendations'] = str([item['id'] for item in recommendations['results']])
 
-        videos = requests.get(f'{tmdb_url}/videos?api_key={config.tmdbkey}').json()
+        videos = get_json(f'{tmdb_url}/videos?api_key={config.tmdbkey}')
         trailerList = [r for r in videos['results'] if r['type'] == 'Trailer']
         if trailerList:
             selected_trailer = next((t for t in trailerList if t['official']), trailerList[0])
@@ -403,7 +408,10 @@ def enrich(rows, new_only=False, refresh_omdb=False, refresh_credits=False):
             if value == 0.0:
                 value = 0.5
             headers = {'Content-Type': 'application/json;charset=utf8', 'Authorization': f'Bearer {config.tmdbtoken}'}
-            requests.post(f'{tmdb_url}/rating', headers=headers, json={"value": value})
+            try:
+                requests.post(f'{tmdb_url}/rating', headers=headers, json={"value": value}, timeout=30)
+            except requests.exceptions.RequestException as e:
+                print(f'  TMDB rating post failed ({type(e).__name__}), skipping: {title}')
 
         # OMDB SECTION
         if not needs_omdb(row, movieInfo.get('release_date'), year, refresh_omdb):
@@ -413,7 +421,7 @@ def enrich(rows, new_only=False, refresh_omdb=False, refresh_credits=False):
         omdb_calls += 1
         omdb = {}
         while omdb_key_index < len(omdb_keys):
-            omdb = requests.get(f'http://www.omdbapi.com/?apikey={omdb_keys[omdb_key_index]}&i={imdbid}&type=movie').json()
+            omdb = get_json(f'http://www.omdbapi.com/?apikey={omdb_keys[omdb_key_index]}&i={imdbid}&type=movie')
             if omdb.get("Response") == "False" and 'limit' in omdb.get("Error", "").lower():
                 omdb_key_index += 1
                 if omdb_key_index < len(omdb_keys):
