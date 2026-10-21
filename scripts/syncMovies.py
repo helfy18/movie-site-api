@@ -10,6 +10,7 @@ Run from anywhere:
     python3 scripts/syncMovies.py --new-only     # enrich only rows with no TMDBId yet, then sync everything
     python3 scripts/syncMovies.py --refresh-omdb # full run, but re-fetch OMDB ratings even for old movies
     python3 scripts/syncMovies.py --refresh-credits # full run, re-fetching TMDB credits (Cast/Directors) for every row
+                                                 # (rows whose Cast is still a names-only list are re-fetched on every run)
     python3 scripts/syncMovies.py --check        # test the Sheets and Mongo connections, read-only, then exit
     python3 scripts/syncMovies.py --backup       # dump the Mongo collection and the sheet to scripts/backups/, then exit
 
@@ -84,7 +85,7 @@ CAST = {
     'Provider': json.loads,         # '{"link": ...}'      -> dict
     'Recommendations': json.loads,  # '[581997, 141052]'   -> list of ints
     'Directors': json.loads,        # '["Joel Coen", "Ethan Coen"]' -> list of names
-    'Cast': json.loads,             # '["Tom Hanks", "Tim Allen"]'  -> list of names
+    'Cast': json.loads,             # '[{"name": "Tom Hanks", "character": "Woody (voice)", ...}]' -> list of dicts
 }
 SKIP_EMPTY = True   # Compass omitted empty cells from documents; keep that behavior
 # Retired string columns, replaced by the Directors/Cast JSON arrays. Deleted
@@ -316,6 +317,27 @@ def get_rating(ratings, source):
     return match[0] if match else 'N/A'
 
 
+def cast_member(actor):
+    """The fields the API's castMember struct reads, in TMDB billing order."""
+    return {
+        'name': actor['name'],
+        'character': actor.get('character') or '',
+        'profile_path': actor.get('profile_path') or '',
+        'tmdbid': actor['id'],
+    }
+
+
+def needs_credits(row, refresh=False):
+    """True when Cast is missing or still in the retired names-only form."""
+    if refresh or not row.get('Cast'):
+        return True
+    try:
+        cast = json.loads(row['Cast'])
+    except ValueError:
+        return True
+    return any(isinstance(member, str) for member in cast)
+
+
 def has_omdb_data(row):
     return bool(row.get('Ratings')) and bool(row.get('Rated'))
 
@@ -363,11 +385,11 @@ def enrich(rows, new_only=False, refresh_omdb=False, refresh_credits=False):
 
         # Cast/Directors go straight from the credits response into JSON arrays;
         # never join-and-split on commas, names like "Robert Downey, Jr." break.
-        if refresh_credits or not row.get('Cast'):
+        if needs_credits(row, refresh_credits):
             castAndCrew = get_json(f'{tmdb_url}/credits?api_key={config.tmdbkey}')
-            cast = [actor["name"] for actor in castAndCrew["cast"]]
+            cast = [cast_member(actor) for actor in castAndCrew["cast"]]
             directors = [c["name"] for c in castAndCrew["crew"] if c["job"] == "Director"]
-            print(title, ', '.join(cast))
+            print(title, ', '.join(member['name'] for member in cast))
             row['Cast'] = json.dumps(cast)          # '[]' when TMDB has none, so it is not re-fetched every run
             row['Directors'] = json.dumps(directors)
 

@@ -1,5 +1,10 @@
 package movies
 
+import (
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/bsontype"
+)
+
 // Different websites that provide movies to watch
 type providerInfo struct {
 	Logo_path        string `json:"logo_path" bson:"logo_path"`
@@ -22,6 +27,27 @@ type providers struct {
 	Free     []providerInfo `json:"free" bson:"free"`
 }
 
+// One credited actor, in TMDB billing order. The sheet column is written by
+// scripts/syncMovies.py with these same keys.
+type castMember struct {
+	Name         string `json:"name" bson:"name"`
+	Character    string `json:"character,omitempty" bson:"character"`
+	Profile_path string `json:"profile_path,omitempty" bson:"profile_path"`
+	TMDBId       int32  `json:"tmdbid,omitempty" bson:"tmdbid"`
+}
+
+type plainCastMember castMember
+
+// Cast used to be a plain array of names. Accepting a bare string keeps the
+// API serving while documents are migrated to the object form.
+func (m *castMember) UnmarshalBSONValue(t bsontype.Type, data []byte) error {
+	if t == bsontype.String {
+		m.Character, m.Profile_path, m.TMDBId = "", "", 0
+		return bson.UnmarshalValue(t, data, &m.Name)
+	}
+	return bson.UnmarshalValue(t, data, (*plainCastMember)(m))
+}
+
 // Ratings from other sites
 type rating struct {
 	Source string `json:"source" bson:"Source"`
@@ -34,35 +60,35 @@ type rating struct {
 		written by scripts/syncMovies.py.
 */
 type movie struct {
-	Movie           string    `json:"movie" bson:"Movie"`
-	JH_Score        int32     `json:"jh_score" bson:"JH_Score"`
-	Universe        string    `json:"universe" bson:"Universe"`
-	Sub_Universe    string    `json:"sub_universe" bson:"Sub_Universe"`
-	Genre           string    `json:"genre" bson:"Genre"`
-	Genre_2         string    `json:"genre_2" bson:"Genre_2"`
-	Holiday         string    `json:"holiday" bson:"Holiday"`
-	Exclusive       string    `json:"exclusive" bson:"Exclusive"`
-	Studio          string    `json:"studio" bson:"Studio"`
-	Year            int32     `json:"year" bson:"Year"`
-	Review          string    `json:"review" bson:"Review"`
-	Ranking         int32     `json:"ranking" bson:"Ranking"`
-	Dani_Approved   bool      `json:"dani_approved" bson:"Dani_Approved"`
-	Plot            string    `json:"plot" bson:"Plot"`
-	Poster          string    `json:"poster" bson:"Poster"`
-	Cast            []string  `json:"cast" bson:"Cast"`
-	Directors       []string  `json:"directors" bson:"Directors"`
-	Ratings         []rating  `json:"ratings" bson:"Ratings"`
-	BoxOffice       string    `json:"boxoffice" bson:"BoxOffice"`
-	Rated           string    `json:"rated" bson:"Rated"`
-	Runtime         int32     `json:"runtime" bson:"Runtime"`
-	Provider        providers `json:"provider" bson:"Provider"`
-	Budget          string    `json:"budget" bson:"Budget"`
-	TMDBId          int32     `json:"tmdbid" bson:"TMDBId"`
-	Recommendations []int32   `json:"recommendations" bson:"Recommendations"`
-	RottenTomatoes  string    `json:"rottentomatoes" bson:"RottenTomatoes"`
-	IMDB            string    `json:"imdb" bson:"IMDB"`
-	Metacritic      string    `json:"metacritic" bson:"Metacritic"`
-	Trailer         string    `json:"trailer" bson:"Trailer"`
-	Origin_Country  string    `json:"origin_country" bson:"origin_country"`
-	Ms_added        int64     `json:"ms_added" bson:"ms_added"`
+	Movie           string       `json:"movie" bson:"Movie"`
+	JH_Score        int32        `json:"jh_score" bson:"JH_Score"`
+	Universe        string       `json:"universe" bson:"Universe"`
+	Sub_Universe    string       `json:"sub_universe" bson:"Sub_Universe"`
+	Genre           string       `json:"genre" bson:"Genre"`
+	Genre_2         string       `json:"genre_2" bson:"Genre_2"`
+	Holiday         string       `json:"holiday" bson:"Holiday"`
+	Exclusive       string       `json:"exclusive" bson:"Exclusive"`
+	Studio          string       `json:"studio" bson:"Studio"`
+	Year            int32        `json:"year" bson:"Year"`
+	Review          string       `json:"review" bson:"Review"`
+	Ranking         int32        `json:"ranking" bson:"Ranking"`
+	Dani_Approved   bool         `json:"dani_approved" bson:"Dani_Approved"`
+	Plot            string       `json:"plot" bson:"Plot"`
+	Poster          string       `json:"poster" bson:"Poster"`
+	Cast            []castMember `json:"cast" bson:"Cast"`
+	Directors       []string     `json:"directors" bson:"Directors"`
+	Ratings         []rating     `json:"ratings" bson:"Ratings"`
+	BoxOffice       string       `json:"boxoffice" bson:"BoxOffice"`
+	Rated           string       `json:"rated" bson:"Rated"`
+	Runtime         int32        `json:"runtime" bson:"Runtime"`
+	Provider        providers    `json:"provider" bson:"Provider"`
+	Budget          string       `json:"budget" bson:"Budget"`
+	TMDBId          int32        `json:"tmdbid" bson:"TMDBId"`
+	Recommendations []int32      `json:"recommendations" bson:"Recommendations"`
+	RottenTomatoes  string       `json:"rottentomatoes" bson:"RottenTomatoes"`
+	IMDB            string       `json:"imdb" bson:"IMDB"`
+	Metacritic      string       `json:"metacritic" bson:"Metacritic"`
+	Trailer         string       `json:"trailer" bson:"Trailer"`
+	Origin_Country  string       `json:"origin_country" bson:"origin_country"`
+	Ms_added        int64        `json:"ms_added" bson:"ms_added"`
 }

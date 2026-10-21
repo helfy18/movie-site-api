@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -124,7 +125,7 @@ func TestBuildFilterQueryConditions(t *testing.T) {
 		{
 			name:  "actor matches cast array elements",
 			query: "actor=Tom+Hanks&actor=Meg+Ryan",
-			want:  bson.M{"Cast": bson.M{"$in": []string{"Tom Hanks", "Meg Ryan"}}},
+			want:  bson.M{"Cast.name": bson.M{"$in": []string{"Tom Hanks", "Meg Ryan"}}},
 		},
 		{
 			name:  "free matches non-empty free or ads sections",
@@ -286,19 +287,40 @@ func TestParseViewProjection(t *testing.T) {
 	}
 }
 
+// bsonPathExists follows a dotted projection path through nested structs and
+// slice element types by bson tag.
+func bsonPathExists(typ reflect.Type, path string) bool {
+	for _, part := range strings.Split(path, ".") {
+		for typ.Kind() == reflect.Slice || typ.Kind() == reflect.Pointer {
+			typ = typ.Elem()
+		}
+		if typ.Kind() != reflect.Struct {
+			return false
+		}
+		next, found := reflect.Type(nil), false
+		for field := range typ.Fields() {
+			if field.Tag.Get("bson") == part {
+				next, found = field.Type, true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+		typ = next
+	}
+	return true
+}
+
 /*
 Every compactProjection key must be a real bson field on the movie struct;
 a tag rename would otherwise silently drop the field from compact responses
 instead of failing a query.
 */
 func TestCompactProjectionMatchesMovieFields(t *testing.T) {
-	bsonTags := make(map[string]bool)
-	for field := range reflect.TypeFor[movie]().Fields() {
-		bsonTags[field.Tag.Get("bson")] = true
-	}
 	for key := range compactProjection {
-		if !bsonTags[key] {
-			t.Errorf("compactProjection key %q is not a bson tag on movie", key)
+		if !bsonPathExists(reflect.TypeFor[movie](), key) {
+			t.Errorf("compactProjection key %q is not a bson path on movie", key)
 		}
 	}
 }

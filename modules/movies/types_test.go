@@ -40,10 +40,13 @@ var dbDocument = bson.M{
 	"Poster":        "https://image.tmdb.org/t/p/w500/uXDfjJbdP4ijW5hWSBrPrlKpxab.jpg",
 	// Director/Actors strings may linger in Mongo until a sync removes them;
 	// the API must ignore them without error
-	"Actors":        "Tom Hanks, Tim Allen",
-	"Cast":          bson.A{"Tom Hanks", "Tim Allen"},
-	"Director":      "John Lasseter",
-	"Directors":     bson.A{"John Lasseter"},
+	"Actors": "Tom Hanks, Tim Allen",
+	"Cast": bson.A{
+		bson.M{"name": "Tom Hanks", "character": "Woody (voice)", "profile_path": "/w.jpg", "tmdbid": int32(31)},
+		bson.M{"name": "Tim Allen", "character": "Buzz Lightyear (voice)", "profile_path": "/b.jpg", "tmdbid": int32(12898)},
+	},
+	"Director":  "John Lasseter",
+	"Directors": bson.A{"John Lasseter"},
 	"Ratings": bson.A{
 		bson.M{"Source": "Internet Movie Database", "Value": "8.3/10"},
 		bson.M{"Source": "Rotten Tomatoes", "Value": "100%"},
@@ -133,8 +136,12 @@ func TestMovieDecodesFromDBDocument(t *testing.T) {
 	if !reflect.DeepEqual(m.Directors, []string{"John Lasseter"}) {
 		t.Errorf("Directors = %v, want [John Lasseter]", m.Directors)
 	}
-	if !reflect.DeepEqual(m.Cast, []string{"Tom Hanks", "Tim Allen"}) {
-		t.Errorf("Cast = %v, want [Tom Hanks Tim Allen]", m.Cast)
+	wantCast := []castMember{
+		{Name: "Tom Hanks", Character: "Woody (voice)", Profile_path: "/w.jpg", TMDBId: 31},
+		{Name: "Tim Allen", Character: "Buzz Lightyear (voice)", Profile_path: "/b.jpg", TMDBId: 12898},
+	}
+	if !reflect.DeepEqual(m.Cast, wantCast) {
+		t.Errorf("Cast = %+v, want %+v", m.Cast, wantCast)
 	}
 	if !m.Dani_Approved {
 		t.Error("Dani_Approved = false, want true")
@@ -185,6 +192,28 @@ func TestMovieJSONMatchesFrontendContract(t *testing.T) {
 	}
 	if provider["link"] == "" {
 		t.Error("provider link missing")
+	}
+}
+
+/*
+Documents synced before Cast became an object array hold bare names; they
+must still decode (as name-only members) until the next sync rewrites them.
+*/
+func TestCastAcceptsLegacyNames(t *testing.T) {
+	raw, err := bson.Marshal(bson.M{
+		"Movie": "Old Sync",
+		"Cast":  bson.A{"Tom Hanks", bson.M{"name": "Tim Allen", "character": "Buzz"}},
+	})
+	if err != nil {
+		t.Fatalf("bson.Marshal: %v", err)
+	}
+	var m movie
+	if err := bson.Unmarshal(raw, &m); err != nil {
+		t.Fatalf("bson.Unmarshal: %v", err)
+	}
+	want := []castMember{{Name: "Tom Hanks"}, {Name: "Tim Allen", Character: "Buzz"}}
+	if !reflect.DeepEqual(m.Cast, want) {
+		t.Errorf("Cast = %+v, want %+v", m.Cast, want)
 	}
 }
 

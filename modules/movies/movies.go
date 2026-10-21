@@ -135,7 +135,7 @@ func buildFilterQuery(c *gin.Context) (bson.M, bool) {
 
 	actor := c.QueryArray("actor")
 	if len(actor) > 0 {
-		conditions = append(conditions, bson.M{"Cast": bson.M{"$in": actor}})
+		conditions = append(conditions, bson.M{"Cast.name": bson.M{"$in": actor}})
 	}
 
 	runtime := c.QueryArray("runtime")
@@ -228,7 +228,7 @@ var compactProjection = bson.M{
 	"Poster":        1,
 	"TMDBId":        1,
 	"Dani_Approved": 1,
-	"Cast":          1,
+	"Cast.name":     1,
 	"Directors":     1,
 	"Universe":      1,
 	"Sub_Universe":  1,
@@ -342,7 +342,6 @@ func (h *Handler) GetMovie(c *gin.Context) {
 		query["Year"] = Year
 	}
 
-
 	var movie movie
 	err := h.collection.FindOne(c.Request.Context(), query).Decode(&movie)
 	if err != nil {
@@ -413,7 +412,6 @@ func (h *Handler) GetRandomMovie(c *gin.Context) {
 	if projection != nil {
 		pipeline = append(pipeline, bson.M{"$project": projection})
 	}
-
 
 	cursor, err := h.collection.Aggregate(c.Request.Context(), pipeline)
 	if err != nil {
