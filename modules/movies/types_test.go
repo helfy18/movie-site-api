@@ -13,7 +13,7 @@ import (
 // alters this set, the test fails before the frontend finds out the hard way.
 var frontendMovieFields = []string{
 	"movie", "jh_score", "universe", "sub_universe", "genre", "genre_2",
-	"holiday", "exclusive", "studio", "year", "review", "ranking",
+	"holiday", "studio", "year", "review", "ranking",
 	"dani_approved", "plot", "poster", "cast", "directors", "ratings",
 	"boxoffice", "rated", "runtime", "provider", "budget", "tmdbid",
 	"recommendations", "rottentomatoes", "imdb", "metacritic", "trailer",
@@ -30,7 +30,6 @@ var dbDocument = bson.M{
 	"Genre":         "Animation",
 	"Genre_2":       "Comedy",
 	"Holiday":       "None",
-	"Exclusive":     "No",
 	"Studio":        "Pixar",
 	"Year":          int32(1995),
 	"Review":        "A classic.",
@@ -257,7 +256,7 @@ func TestProviderAdsFreeNullWhenAbsent(t *testing.T) {
 
 /*
 Most real documents omit empty fields entirely (the sync script skips empty
-cells): Holiday, Exclusive, Universe, Sub_Universe, Genre_2 and Review are
+cells): Holiday, Universe, Sub_Universe, Genre_2 and Review are
 missing from a large share of the collection, and 27 documents have an empty
 Provider. The frontend still receives every JSON key, with zero values.
 */

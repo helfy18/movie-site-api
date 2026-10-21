@@ -59,7 +59,7 @@ func convertStringsToInts(strs []string) ([]int, error) {
 
 /*
 Builds a MongoDB filter from the optional query parameters genre, universe,
-exclusive, studio, holiday, year, decade, director, actor, runtime (range),
+studio, holiday, year, decade, director, actor, runtime (range),
 rating (range), provider, free (true matches movies with a free or
 free-with-ads provider) and dani_approved (boolean). Writes a 400 response
 and returns false when a parameter is invalid.
@@ -83,11 +83,6 @@ func buildFilterQuery(c *gin.Context) (bson.M, bool) {
 			{"Sub_Universe": bson.M{"$in": universes}},
 		}}
 		conditions = append(conditions, universeCondition)
-	}
-
-	exclusives := c.QueryArray("exclusive")
-	if len(exclusives) > 0 {
-		conditions = append(conditions, bson.M{"Exclusive": bson.M{"$in": exclusives}})
 	}
 
 	studio := c.QueryArray("studio")
@@ -254,7 +249,7 @@ func parseViewProjection(c *gin.Context) (bson.M, bool) {
 }
 
 /*
-Accepts optional parameters genre, universe, exclusive, studio, holiday,
+Accepts optional parameters genre, universe, studio, holiday,
 year, decade, director, actor, runtime (range), rating (range), provider,
 free and view (full is the default; compact returns only the fields the
 movie grid needs, leaving the rest as zero values).
@@ -587,12 +582,6 @@ func (h *Handler) ListTypes(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse providers"})
 		return
 	}
-	exclusives, err := h.collection.Distinct(c.Request.Context(), "Exclusive", bson.M{})
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct exclusives"})
-		return
-	}
-
 	holidays, err := h.collection.Distinct(c.Request.Context(), "Holiday", bson.M{})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch distinct holidays"})
@@ -666,7 +655,6 @@ func (h *Handler) ListTypes(c *gin.Context) {
 		"provider":  providers,
 		"genre":     genres,
 		"year":      years,
-		"exclusive": exclusives,
 		"holiday":   holidays,
 		"studio":    studios,
 		"director":  directors,

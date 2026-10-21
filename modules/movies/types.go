@@ -67,7 +67,6 @@ type movie struct {
 	Genre           string       `json:"genre" bson:"Genre"`
 	Genre_2         string       `json:"genre_2" bson:"Genre_2"`
 	Holiday         string       `json:"holiday" bson:"Holiday"`
-	Exclusive       string       `json:"exclusive" bson:"Exclusive"`
 	Studio          string       `json:"studio" bson:"Studio"`
 	Year            int32        `json:"year" bson:"Year"`
 	Review          string       `json:"review" bson:"Review"`
