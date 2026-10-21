@@ -88,9 +88,10 @@ CAST = {
     'Cast': json.loads,             # '[{"name": "Tom Hanks", "character": "Woody (voice)", ...}]' -> list of dicts
 }
 SKIP_EMPTY = True   # Compass omitted empty cells from documents; keep that behavior
-# Retired string columns, replaced by the Directors/Cast JSON arrays. Deleted
-# from the sheet on sight and never written to Mongo (in case they linger).
-RETIRED_COLUMNS = ('Director', 'Actors')
+# Retired columns: Director/Actors were replaced by the Directors/Cast JSON
+# arrays; Exclusive was dropped from the site in Oct 2026 (Provider covers it).
+# Deleted from the sheet on sight and never written to Mongo (in case they linger).
+RETIRED_COLUMNS = ('Director', 'Actors', 'Exclusive')
 MONGO_SKIP = set(RETIRED_COLUMNS)
 MONGO_KEY = 'TMDBId'
 BACKUP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backups')   # field used to match sheet rows to Mongo documents
