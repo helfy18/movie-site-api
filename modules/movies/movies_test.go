@@ -82,11 +82,12 @@ func TestBuildFilterQueryConditions(t *testing.T) {
 		want  bson.M
 	}{
 		{
-			name:  "genre searches both genre fields",
+			name:  "genre searches all three genre fields",
 			query: "genre=Action&genre=Comedy",
 			want: bson.M{"$or": []bson.M{
 				{"Genre": bson.M{"$in": []string{"Action", "Comedy"}}},
 				{"Genre_2": bson.M{"$in": []string{"Action", "Comedy"}}},
+				{"Genre_3": bson.M{"$in": []string{"Action", "Comedy"}}},
 			}},
 		},
 		{

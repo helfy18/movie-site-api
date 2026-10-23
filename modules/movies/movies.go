@@ -72,6 +72,7 @@ func buildFilterQuery(c *gin.Context) (bson.M, bool) {
 		genreCondition := bson.M{"$or": []bson.M{
 			{"Genre": bson.M{"$in": genres}},
 			{"Genre_2": bson.M{"$in": genres}},
+			{"Genre_3": bson.M{"$in": genres}},
 		}}
 		conditions = append(conditions, genreCondition)
 	}
@@ -495,6 +496,7 @@ func (h *Handler) ListTypes(c *gin.Context) {
 		bson.M{"$project": bson.M{
 			"Genre":   "$Genre",
 			"Genre_2": "$Genre_2",
+			"Genre_3": "$Genre_3",
 		}},
 		bson.M{"$facet": bson.M{
 			"genre1": bson.A{
@@ -509,9 +511,15 @@ func (h *Handler) ListTypes(c *gin.Context) {
 					"totalCount": bson.M{"$sum": 1},
 				}},
 			},
+			"genre3": bson.A{
+				bson.M{"$group": bson.M{
+					"_id":        "$Genre_3",
+					"totalCount": bson.M{"$sum": 1},
+				}},
+			},
 		}},
 		bson.M{"$project": bson.M{
-			"allGenres": bson.M{"$setUnion": []interface{}{"$genre1", "$genre2"}},
+			"allGenres": bson.M{"$concatArrays": []interface{}{"$genre1", "$genre2", "$genre3"}},
 		}},
 		bson.M{"$unwind": "$allGenres"},
 		bson.M{"$group": bson.M{

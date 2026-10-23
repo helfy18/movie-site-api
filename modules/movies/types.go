@@ -66,6 +66,7 @@ type movie struct {
 	Sub_Universe    string       `json:"sub_universe" bson:"Sub_Universe"`
 	Genre           string       `json:"genre" bson:"Genre"`
 	Genre_2         string       `json:"genre_2" bson:"Genre_2"`
+	Genre_3         string       `json:"genre_3" bson:"Genre_3"`
 	Holiday         string       `json:"holiday" bson:"Holiday"`
 	Studio          string       `json:"studio" bson:"Studio"`
 	Year            int32        `json:"year" bson:"Year"`

@@ -84,6 +84,7 @@ Every movie endpoint returns the full movie object by default. For example, `GET
   "sub_universe": "Example Sub Universe",
   "genre": "Action",
   "genre_2": "Adventure",
+  "genre_3": "Sci-Fi",
   "holiday": "None",
   "studio": "Example Studio",
   "year": 2024,
