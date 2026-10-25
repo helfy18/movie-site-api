@@ -302,15 +302,31 @@ def restore(path):
 # -------------------------------- Enrichment -------------------------------
 def get_json(url, **kwargs):
     """requests.get(...).json() with retries. TMDB/OMDB occasionally reset the
-    connection mid-run; one dropped socket should not kill a 2000-row sync."""
+    connection mid-run; one dropped socket should not kill a 2000-row sync.
+    429s and 5xx are retried rather than returned: TMDB answers them with a JSON
+    error body that has no 'results', which would otherwise read as 'no data'.
+    Other 4xx bodies are returned as-is, so OMDB's 401 'Request limit reached!'
+    still reaches the key-rotation logic in enrich()."""
     for i in range(MAX_RETRIES):
         try:
-            return requests.get(url, timeout=30, **kwargs).json()
+            r = requests.get(url, timeout=30, **kwargs)
+            if r.status_code == 429 or r.status_code >= 500:
+                r.raise_for_status()
+            return r.json()
         except (requests.exceptions.RequestException, ValueError) as e:
             if i == MAX_RETRIES - 1:
                 raise
             print(f'  request failed ({type(e).__name__}), retry {i + 1}/{MAX_RETRIES - 1} in {WAIT_TIME}s: {url.split("?")[0]}')
             time.sleep(WAIT_TIME)
+
+
+def tmdb_results(payload, url, title):
+    """These TMDB endpoints always carry a 'results' list, empty when the movie
+    genuinely has none. A payload without the key is an error body; fail loudly
+    rather than let it blank out a row that already has good data."""
+    if 'results' not in payload:
+        raise RuntimeError(f'TMDB sent no "results" for {title}: {url.split("?")[0]} -> {payload}')
+    return payload['results']
 
 
 def get_rating(ratings, source):
@@ -407,21 +423,21 @@ def enrich(rows, new_only=False, refresh_omdb=False, refresh_credits=False):
         row['Runtime'] = f"{movieInfo['runtime']:,}"
         row['origin_country'] = country
 
-        providers = get_json(f'{tmdb_url}/watch/providers?api_key={config.tmdbkey}')
-        if providers['results'] and 'CA' in providers['results']:
-            row['Provider'] = json.dumps(providers['results']['CA'])
-        else:
-            row['Provider'] = "{}"
+        providers_url = f'{tmdb_url}/watch/providers?api_key={config.tmdbkey}'
+        providers = tmdb_results(get_json(providers_url), providers_url, title)
+        row['Provider'] = json.dumps(providers['CA']) if 'CA' in providers else "{}"
 
-        recommendations = get_json(f'{tmdb_url}/recommendations?api_key={config.tmdbkey}')
-        row['Recommendations'] = str([item['id'] for item in recommendations['results']])
+        rec_url = f'{tmdb_url}/recommendations?api_key={config.tmdbkey}'
+        recommendations = tmdb_results(get_json(rec_url), rec_url, title)
+        row['Recommendations'] = str([item['id'] for item in recommendations])
 
-        videos = get_json(f'{tmdb_url}/videos?api_key={config.tmdbkey}')
-        trailerList = [r for r in videos['results'] if r['type'] == 'Trailer']
+        videos_url = f'{tmdb_url}/videos?api_key={config.tmdbkey}'
+        videos = tmdb_results(get_json(videos_url), videos_url, title)
+        trailerList = [r for r in videos if r['type'] == 'Trailer']
         if trailerList:
             selected_trailer = next((t for t in trailerList if t['official']), trailerList[0])
-        elif videos['results']:
-            selected_trailer = videos['results'][0]
+        elif videos:
+            selected_trailer = videos[0]
         else:
             selected_trailer = ''
         row['Trailer'] = f'https://www.youtube.com/embed/{selected_trailer["key"]}' if selected_trailer != '' else ''
