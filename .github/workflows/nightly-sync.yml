@@ -5,7 +5,10 @@ name: Nightly sheet sync and site rebuild
 # A failed sync skips the rebuild, so the previous site keeps serving.
 on:
   schedule:
-    - cron: "0 9 * * *" # 09:00 UTC = 4 a.m. Central
+    # 12:11 UTC = 5:11 a.m. Pacific daylight, 4:11 a.m. standard. The odd
+    # minute matters: GitHub delays scheduled runs most at the top of the
+    # hour, and the old "0 9" start was landing four to seven hours late.
+    - cron: "11 12 * * *"
   workflow_dispatch: # "sync now" after editing the sheet
 
 concurrency:
